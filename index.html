@@ -47,7 +47,7 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
 /* Layout */
 .layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 54px); overflow: hidden; }
 .catalog-panel { overflow-y: auto; padding: 20px; }
-.proposal-panel { background: white; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.proposal-panel { background: white; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: visible; }
 
 /* Controls */
 .catalog-controls { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
@@ -92,6 +92,7 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
 .export-dd { position: relative; display: inline-block; }
 .export-dd-menu { display: none; position: absolute; right: 0; top: calc(100% + 4px); background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.13); min-width: 210px; z-index: 200; overflow: hidden; }
 .export-dd-menu.open { display: block; }
+.export-dd-menu.opens-up { top: auto; bottom: calc(100% + 4px); }
 .export-dd-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; border: none; border-bottom: 1px solid var(--border); background: white; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: background 0.15s; white-space: nowrap; }
 .export-dd-item:last-child { border-bottom: none; }
 .export-dd-item:hover { background: var(--bg); }
@@ -218,12 +219,11 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
 <div class="header">
   <div class="header-left">
     <div class="logo">嵩昊 <span>提品系統</span></div>
-    <input type="text" class="proposal-title-input" id="proposalTitle" placeholder="提品表名稱" value="202606 夏季涼感寢具提品表">
+    <input type="text" class="proposal-title-input" id="proposalTitle" placeholder="提品表名稱" value="嵩昊國際寢具提品表">
   </div>
   <div class="header-actions">
     <span class="sync-tag" id="syncTag">讀取中…</span>
     <button class="btn btn-outline" id="syncBtn" onclick="syncData()" title="從 Google Sheets 重新載入最新資料">🔄 同步</button>
-    <span class="badge-count" id="selectedCount">已選 0 件</span>
     <button class="btn btn-outline" onclick="openPreview()">📋 預覽</button>
     <div class="export-dd">
       <button class="btn btn-white" onclick="toggleExportDd('hdr')">📥 匯出 ▾</button>
@@ -318,7 +318,13 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
     <div id="catalogContainer"></div>
   </div>
   <div class="proposal-panel">
-    <div class="proposal-header"><h3>📦 提品清單</h3><p>點左側 + 按鈕加入，點規格標籤移除</p></div>
+    <div class="proposal-header">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <h3>📦 提品清單</h3>
+        <span id="selectedCount" style="font-size:12px;font-weight:700;color:var(--primary);background:var(--primary-light);padding:3px 10px;border-radius:12px">0 件</span>
+      </div>
+      <p>點左側 + 按鈕加入，點規格標籤移除</p>
+    </div>
     <div class="proposal-list" id="proposalList">
       <div class="proposal-empty"><div class="icon">📋</div><div>尚未選擇產品</div><div style="font-size:12px">點左側產品卡片的 + 按鈕加入</div></div>
     </div>
@@ -331,11 +337,11 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
         <button class="fbtn fbtn-secondary" onclick="openPreview()">預覽</button>
         <div class="export-dd" style="flex:1">
           <button class="fbtn fbtn-primary" style="width:100%" onclick="toggleExportDd('foot')">📥 匯出 ▾</button>
-          <div class="export-dd-menu" id="exportDd-foot">
-            <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()">💰 價格表-T1<span class="tmpl-label">含供應價T1、庫存（內部用）</span></button>
-            <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()">💰 價格表-T2<span class="tmpl-label">含供應價T2、庫存（內部用）</span></button>
-            <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()">💰 價格表-T3<span class="tmpl-label">含供應價T3、庫存（內部用）</span></button>
-            <button class="export-dd-item" onclick="exportPPTX();closeExportDd()">📊 提品簡報<span class="tmpl-label">PowerPoint，一產品一頁</span></button>
+          <div class="export-dd-menu opens-up" id="exportDd-foot">
+            <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()"><span class="item-icon">💰</span><span class="item-body">價格表－T1<span class="tmpl-label">供應價T1、庫存（內部用）</span></span></button>
+            <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()"><span class="item-icon">💰</span><span class="item-body">價格表－T2<span class="tmpl-label">供應價T2、庫存（內部用）</span></span></button>
+            <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()"><span class="item-icon">💰</span><span class="item-body">價格表－T3<span class="tmpl-label">供應價T3、庫存（內部用）</span></span></button>
+            <button class="export-dd-item" onclick="exportPPTX();closeExportDd()"><span class="item-icon">📊</span><span class="item-body">提品簡報<span class="tmpl-label">PowerPoint，一產品一頁</span></span></button>
           </div>
         </div>
       </div>
@@ -930,7 +936,7 @@ function removeProduct(pid) {
   p.variants.forEach(v => delete selected[v.id]);
   renderProposal(); renderCatalog(); updateCount();
 }
-function updateCount() { document.getElementById('selectedCount').textContent = `已選 ${Object.keys(selected).length} 件`; }
+function updateCount() { document.getElementById('selectedCount').textContent = `${Object.keys(selected).length} 件`; }
 
 // ─────────────────────────────────
 // PREVIEW
