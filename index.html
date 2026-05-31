@@ -1225,8 +1225,8 @@ async function exportPPTX() {
     if (p.qmax) footParts.push('QMAX ' + p.qmax);
     slide.addText(footParts.join('  |  '), { x:0.25, y:5.175, w:4.5, h:0.45, fontSize:9, color:CM, valign:'middle', margin:0 });
     if (p.certs.length) {
-      const certStr = p.certs.map(c => '✓ ' + c).join('   ');
-      slide.addText(certStr, { x:4.9, y:5.175, w:4.85, h:0.45, fontSize:9, color:CM, valign:'middle', align:'right', wrap:true, margin:0 });
+      const certStr = p.certs.map(c => '✓ ' + c).join('  ');
+      slide.addText(certStr, { x:4.75, y:5.175, w:5.0, h:0.45, fontSize:8, color:CM, valign:'middle', align:'left', wrap:true, margin:0 });
     }
   }
 
