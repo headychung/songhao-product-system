@@ -1047,56 +1047,54 @@ async function loadScript(src) {
   });
 }
 
-// 嘗試將圖片 URL 轉為 base64（處理 CORS；失敗回傳 null）
+// 嘗試將圖片 URL 轉為 base64，回傳 {data, iw, ih}（處理 CORS；失敗回傳 null）
 async function imgToBase64(url) {
   if (!url) return null;
 
-  // fetch + FileReader 方式（不依賴 canvas CORS）
-  const fetchToBase64 = async (fetchUrl) => {
+  // 取得 blob（先直連，再走 proxy）
+  const fetchBlob = async (fetchUrl) => {
     try {
-      const resp = await fetch(fetchUrl, { signal: AbortSignal.timeout(10000) });
+      const resp = await fetch(fetchUrl, { signal: AbortSignal.timeout(12000) });
       if (!resp.ok) return null;
       const blob = await resp.blob();
-      return await new Promise(res => {
-        const reader = new FileReader();
-        reader.onloadend = () => res(reader.result ? reader.result.replace('data:', '') : null);
-        reader.onerror = () => res(null);
-        reader.readAsDataURL(blob);
-      });
+      if (!blob.type.startsWith('image/')) return null;
+      return blob;
     } catch(e) { return null; }
   };
 
-  // 1. 直接 fetch（非 Google Drive URL 通常可用）
+  let blob = null;
+  // 1. 直接 fetch（非 Google Drive 通常可用）
   if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) {
-    const r = await fetchToBase64(url);
-    if (r) return r;
+    blob = await fetchBlob(url);
   }
+  // 2. CORS proxy
+  if (!blob) {
+    blob = await fetchBlob('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url));
+  }
+  if (!blob) return null;
 
-  // 2. 透過 CORS proxy（外部圖片無 CORS header 時走這條）
-  const proxy = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url);
-  const r2 = await fetchToBase64(proxy);
-  if (r2) return r2;
-
-  // 3. Canvas fallback（部分環境仍可用）
+  // 用 blob URL 載入 img，取得真實尺寸後畫到 canvas
+  const blobUrl = URL.createObjectURL(blob);
   return new Promise(resolve => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    const timer = setTimeout(() => resolve(null), 8000);
+    const timer = setTimeout(() => { URL.revokeObjectURL(blobUrl); resolve(null); }, 8000);
     img.onload = () => {
       clearTimeout(timer);
       try {
-        const maxW = 800, maxH = 600;
-        let w = img.naturalWidth || 400, h = img.naturalHeight || 300;
+        const iw = img.naturalWidth || 400, ih = img.naturalHeight || 300;
+        const maxW = 1200, maxH = 900;
+        let w = iw, h = ih;
         if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
         if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.85).replace('data:', ''));
-      } catch(e) { resolve(null); }
+        URL.revokeObjectURL(blobUrl);
+        resolve({ data: canvas.toDataURL('image/jpeg', 0.85).replace('data:', ''), iw, ih });
+      } catch(e) { URL.revokeObjectURL(blobUrl); resolve(null); }
     };
-    img.onerror = () => { clearTimeout(timer); resolve(null); };
-    img.src = url;
+    img.onerror = () => { clearTimeout(timer); URL.revokeObjectURL(blobUrl); resolve(null); };
+    img.src = blobUrl;
   });
 }
 
@@ -1141,9 +1139,16 @@ async function exportPPTX() {
     slide.addText(p.category, { x:8.5, y:0, w:1.25, h:0.6, fontSize:10, color:'AAAAAA', valign:'middle', align:'right', margin:0 });
 
     // ── 左欄：商品圖片 ──
-    const imgData = await imgToBase64(p.image);
-    if (imgData) {
-      slide.addImage({ data:imgData, x:IMG_X, y:IMG_Y, w:IMG_W, h:IMG_H, sizing:{type:'contain',w:IMG_W,h:IMG_H} });
+    const imgResult = await imgToBase64(p.image);
+    if (imgResult) {
+      const { data: imgData, iw, ih } = imgResult;
+      // 計算等比例縮放後的實際寬高（contain 邏輯）
+      let dw, dh;
+      if (iw / ih > IMG_W / IMG_H) { dw = IMG_W; dh = IMG_W * ih / iw; }
+      else { dh = IMG_H; dw = IMG_H * iw / ih; }
+      const dx = IMG_X + (IMG_W - dw) / 2;
+      const dy = IMG_Y + (IMG_H - dh) / 2;
+      slide.addImage({ data: imgData, x: dx, y: dy, w: dw, h: dh });
     } else {
       slide.addShape(pres.shapes.RECTANGLE, { x:IMG_X, y:IMG_Y, w:IMG_W, h:IMG_H, fill:{color:'F5F5F5'}, line:{color:CB} });
       slide.addText('無圖片', { x:IMG_X, y:IMG_Y+1.2, w:IMG_W, h:0.4, fontSize:12, color:CM, align:'center', valign:'middle', margin:0 });
