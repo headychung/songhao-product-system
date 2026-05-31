@@ -493,10 +493,15 @@ function parseSheet(rows, category) {
   let curSupply1 = null, curSupply2 = null, curSupply3 = null;
   let idx = 1;
 
+  // 只接受看起來像國家/地區的字串（2-8字，不含數字，不以規格碼開頭）
+  const isValidOrigin = s => s && s.length >= 2 && s.length <= 8 && !/\d/.test(s) && !/^(SS|SD|SQ|SK|DD|DQ|DK|QQ|KK|XL|[SDQK]\s)/i.test(s) && s !== '産地' && s !== '產地';
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row || !row.some(c => c)) continue;
     const 品名 = g(row, 1);
+    // 跳過標題行（gviz 偶爾將第一行當資料行）
+    if (品名 === '品名' || 品名 === '商品名稱') continue;
 
     if (品名) {
       const feat = g(row, 3), mat = g(row, 2), 庫存raw = g(row, 9);
@@ -506,7 +511,7 @@ function parseSheet(rows, category) {
         brand: extractBrand(cleanName(品名)),
         name: stripBrand(cleanName(品名)),
         material: mat, feature: feat,
-        origin: g(row, 5) || null,
+        origin: isValidOrigin(g(row, 5)) ? g(row, 5) : null,
         certs: parseCerts(g(row, 4)),
         qmax: extractQmax(feat) || extractQmax(mat),
         link: g(row, 15) || null,
@@ -526,8 +531,8 @@ function parseSheet(rows, category) {
     if (link && !cur.link) cur.link = link;
     if (規格) { curSize = 規格; curDim = g(row, 7) || curDim; }
 
-    // 產地 carry-forward（取最早出現的非空值）
-    if (!cur.origin) cur.origin = g(row, 5) || null;
+    // 產地 carry-forward（取最早出現的合法值）
+    if (!cur.origin) { const o = g(row, 5); if (isValidOrigin(o)) cur.origin = o; }
 
     // 價格 carry-forward：出現非空值即更新
     const r = parsePrice(g(row, 10)), s = parsePrice(g(row, 11));
