@@ -432,31 +432,40 @@ function loadSheetGVIZ(sheetName) {
 // ─────────────────────────────────
 const g = (row, i) => (row && row[i] != null ? row[i].toString().trim() : '');
 
-// 將各種 Google Drive URL 格式統一轉為可嵌入的縮圖 URL
-// 支援：分享連結 / uc?id= / open?id= / thumbnail / lh3 / 純 http URL
+// 將各種圖片 URL 格式統一轉為可嵌入的直接圖片 URL
+// 支援：Dropbox 分享連結 / Google Drive 各格式 / 一般 http URL
 function toDriveImgUrl(raw) {
   if (!raw) return null;
   raw = raw.trim();
-  // 非 Drive URL → 直接用（含 lh3.googleusercontent.com 等 Google CDN）
-  if (!raw.includes('drive.google.com') && !raw.includes('docs.google.com')) {
-    return raw.startsWith('http') ? raw : null;
+  if (!raw.startsWith('http')) return null;
+
+  // ── Dropbox：將 ?dl=0 改為 ?raw=1 取得直接圖片流 ──
+  if (raw.includes('dropbox.com')) {
+    return raw
+      .replace(/[?&]dl=0/g, '')           // 移除 dl=0
+      .replace(/[?&]dl=1/g, '')           // 移除 dl=1
+      + (raw.includes('?') ? '&raw=1' : '?raw=1');
   }
-  // 已是 thumbnail URL → 直接用
-  if (raw.includes('drive.google.com/thumbnail')) return raw;
-  // 嘗試萃取 FILE_ID
-  let id = null;
-  const m = raw.match(/\/d\/([a-zA-Z0-9_-]{10,})/);   // /d/FILE_ID
-  if (m) {
-    id = m[1];
-  } else {
-    try {
-      const q = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
-      id = q.searchParams.get('id') || q.searchParams.get('open');
-    } catch(e) { /* 非法 URL，忽略 */ }
+
+  // ── Google Drive ──
+  if (raw.includes('drive.google.com') || raw.includes('docs.google.com')) {
+    if (raw.includes('drive.google.com/thumbnail')) return raw;
+    let id = null;
+    const m = raw.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+    if (m) {
+      id = m[1];
+    } else {
+      try {
+        const q = new URL(raw);
+        id = q.searchParams.get('id') || q.searchParams.get('open');
+      } catch(e) {}
+    }
+    if (!id) return null;
+    return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
   }
-  if (!id) return null;
-  // 使用 thumbnail API，最穩定且不需重新導向
-  return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+
+  // ── 其他直接 URL（lh3.googleusercontent.com 等）──
+  return raw;
 }
 const parsePrice = s => { const n = parseFloat(s.replace(/[NT$,\s]/g,'')); return isNaN(n) ? null : n; };
 const parseStock = s => { const n = parseInt(s.replace(/,/g,'')); return isNaN(n) ? null : n; };
