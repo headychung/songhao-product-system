@@ -28,14 +28,14 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
   color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px; width: 220px;
 }
 .proposal-title-input::placeholder { color: rgba(255,255,255,0.6); }
-.header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-.badge-count { background: var(--accent); color: white; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+.header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; }
+.badge-count { background: rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid rgba(255,255,255,0.3); }
 .sync-tag { font-size: 11px; color: rgba(255,255,255,0.65); white-space: nowrap; }
-.btn { padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+.btn { padding: 7px 16px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
 .btn-white { background: white; color: var(--primary); }
 .btn-white:hover { background: #f0f4f8; }
-.btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; }
-.btn-outline:hover { background: rgba(255,255,255,0.1); }
+.btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.45); color: white; }
+.btn-outline:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.7); }
 
 /* Loading & Error */
 .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 54px); gap: 16px; padding: 24px; text-align: center; }
@@ -90,11 +90,14 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
 
 /* Export dropdown */
 .export-dd { position: relative; display: inline-block; }
-.export-dd-menu { display: none; position: absolute; right: 0; top: calc(100% + 4px); background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.12); min-width: 145px; z-index: 200; overflow: hidden; }
+.export-dd-menu { display: none; position: absolute; right: 0; top: calc(100% + 4px); background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.13); min-width: 210px; z-index: 200; overflow: hidden; }
 .export-dd-menu.open { display: block; }
-.export-dd-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border: none; background: white; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: background 0.15s; }
+.export-dd-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; border: none; border-bottom: 1px solid var(--border); background: white; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: background 0.15s; white-space: nowrap; }
+.export-dd-item:last-child { border-bottom: none; }
 .export-dd-item:hover { background: var(--bg); }
-.export-dd-item .tmpl-label { font-size: 11px; color: var(--muted); font-weight: 400; display: block; margin-top: 1px; }
+.export-dd-item .item-icon { font-size: 16px; flex-shrink: 0; }
+.export-dd-item .item-body { display: flex; flex-direction: column; }
+.export-dd-item .tmpl-label { font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 1px; white-space: nowrap; }
 
 .category-tabs { display: flex; gap: 6px; }
 .tab-btn { padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 13px; color: var(--muted); transition: all 0.2s; white-space: nowrap; }
@@ -225,10 +228,10 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
     <div class="export-dd">
       <button class="btn btn-white" onclick="toggleExportDd('hdr')">📥 匯出 ▾</button>
       <div class="export-dd-menu" id="exportDd-hdr">
-        <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()">💰 價格表-T1<span class="tmpl-label">含供應價T1、庫存（內部用）</span></button>
-        <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()">💰 價格表-T2<span class="tmpl-label">含供應價T2、庫存（內部用）</span></button>
-        <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()">💰 價格表-T3<span class="tmpl-label">含供應價T3、庫存（內部用）</span></button>
-        <button class="export-dd-item" onclick="exportPPTX();closeExportDd()">📊 提品簡報<span class="tmpl-label">PowerPoint，一產品一頁</span></button>
+        <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()"><span class="item-icon">💰</span><span class="item-body">價格表－T1<span class="tmpl-label">供應價T1、庫存（內部用）</span></span></button>
+        <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()"><span class="item-icon">💰</span><span class="item-body">價格表－T2<span class="tmpl-label">供應價T2、庫存（內部用）</span></span></button>
+        <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()"><span class="item-icon">💰</span><span class="item-body">價格表－T3<span class="tmpl-label">供應價T3、庫存（內部用）</span></span></button>
+        <button class="export-dd-item" onclick="exportPPTX();closeExportDd()"><span class="item-icon">📊</span><span class="item-body">提品簡報<span class="tmpl-label">PowerPoint，一產品一頁</span></span></button>
       </div>
     </div>
   </div>
