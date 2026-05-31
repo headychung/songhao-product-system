@@ -1072,8 +1072,8 @@ async function imgToBase64(url) {
     if (r) return r;
   }
 
-  // 2. 透過 CORS proxy（Google Drive thumbnail 需要此方式）
-  const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+  // 2. 透過 CORS proxy（外部圖片無 CORS header 時走這條）
+  const proxy = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url);
   const r2 = await fetchToBase64(proxy);
   if (r2) return r2;
 
