@@ -1164,7 +1164,8 @@ async function exportPPTX() {
     // ── 左欄：規格 / 尺寸 / 顏色 / 建議售價（左下角）──
     {
       const specLabelY = originY + (p.origin ? 0.26 : 0) + 0.1;
-      slide.addText('規格 / 尺寸 / 顏色 / 建議售價', { x:IMG_X, y:specLabelY, w:IMG_W, h:0.18, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
+      slide.addShape(pres.shapes.RECTANGLE, { x:IMG_X, y:specLabelY, w:IMG_W, h:0.26, fill:{color:'EBEBEB'}, line:{color:'EBEBEB'} });
+      slide.addText('規格 / 尺寸 / 顏色 / 建議售價', { x:IMG_X, y:specLabelY, w:IMG_W, h:0.26, fontSize:10, color:'444444', bold:true, valign:'middle', margin:[0,6,0,6] });
       const sizeMap = {};
       variants.forEach(v => {
         const key = v.size + '||' + (v.dim || '');
@@ -1174,7 +1175,7 @@ async function exportPPTX() {
       });
       const specGroups = Object.values(sizeMap);
       const stripH = 0.3, stripGap = 0.04;
-      const specStartY = specLabelY + 0.22;
+      const specStartY = specLabelY + 0.30;
       const maxGroups = Math.min(specGroups.length, Math.floor((5.1 - specStartY) / (stripH + stripGap)));
       specGroups.slice(0, maxGroups).forEach((sg, i) => {
         const sy = specStartY + i * (stripH + stripGap);
@@ -1198,12 +1199,13 @@ async function exportPPTX() {
     // ── 右欄：固定錨點版面 ──
     // 認證進頁腳灰底；材質成分固定在頁腳上方；特色說明佔滿所有剩餘空間
     const MAT_LBL_Y   = 4.22;   // 材質成分標籤
-    const MAT_TEXT_Y  = 4.42;   // 材質成分內文
-    const FEAT_TEXT_Y = 0.94;   // 特色說明內文起點
+    const MAT_TEXT_Y  = 4.52;   // 材質成分內文（標籤 0.26 + 間距 0.04）
+    const FEAT_TEXT_Y = 1.02;   // 特色說明內文起點（標籤 0.26 + 間距 0.04）
     const FEAT_MAX_H  = MAT_LBL_Y - FEAT_TEXT_Y - 0.06; // ~3.22"
 
     if (p.feature) {
-      slide.addText('特色說明', { x:CX, y:0.72, w:CW, h:0.2, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
+      slide.addShape(pres.shapes.RECTANGLE, { x:CX, y:0.72, w:CW, h:0.26, fill:{color:'EBEBEB'}, line:{color:'EBEBEB'} });
+      slide.addText('特色說明', { x:CX, y:0.72, w:CW, h:0.26, fontSize:10, color:'444444', bold:true, valign:'middle', margin:[0,6,0,6] });
       const lc = p.feature.split('\n').filter(l => l.trim()).length;
       // 依行數動態縮小字型（最小 7pt），確保全部可見
       const fs = lc <= 9 ? 10 : lc <= 13 ? 9 : lc <= 18 ? 8 : 7;
@@ -1212,8 +1214,9 @@ async function exportPPTX() {
 
     // 材質成分（保留原始換行格式，固定在頁腳上方）
     if (p.material) {
-      slide.addText('材質成分', { x:CX, y:MAT_LBL_Y, w:CW, h:0.18, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
-      slide.addText(p.material.trim(), { x:CX, y:MAT_TEXT_Y, w:CW, h:0.65, fontSize:9.5, color:CT, margin:0 });
+      slide.addShape(pres.shapes.RECTANGLE, { x:CX, y:MAT_LBL_Y, w:CW, h:0.26, fill:{color:'EBEBEB'}, line:{color:'EBEBEB'} });
+      slide.addText('材質成分', { x:CX, y:MAT_LBL_Y, w:CW, h:0.26, fontSize:10, color:'444444', bold:true, valign:'middle', margin:[0,6,0,6] });
+      slide.addText(p.material.trim(), { x:CX, y:MAT_TEXT_Y, w:CW, h:0.6, fontSize:9.5, color:CT, margin:0 });
     }
 
     // ── 頁腳（含認證）──
