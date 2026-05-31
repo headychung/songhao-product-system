@@ -175,7 +175,7 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
 .modal-close { position: absolute; top: 16px; right: 18px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
 .modal h2 { font-size: 18px; margin-bottom: 6px; line-height: 1.4; }
 .modal-sec { margin-top: 16px; }
-.modal-sec h4 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.modal-sec h4 { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 6px; }
 .modal-sec p { font-size: 13px; color: var(--text); line-height: 1.7; }
 .variant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; margin-top: 8px; }
 .variant-card { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px; cursor: pointer; transition: all 0.2s; }
@@ -849,7 +849,7 @@ function openProduct(pid) {
     ${p.qmax?`<span style="display:inline-block;background:#F0F0F0;color:#333333;padding:2px 9px;border-radius:4px;font-size:12px;font-weight:700;margin-top:6px">QMAX ${p.qmax}</span>`:''}
     ${p.stockNote?`<div style="background:#F5F5F5;color:#555555;padding:6px 10px;border-radius:6px;font-size:12px;margin-top:8px">⚠️ ${p.stockNote}</div>`:''}
     <div class="modal-sec"><h4>材質成分</h4><p>${p.material.replace(/\n/g,'<br>')}</p></div>
-    ${p.feature?`<div class="modal-sec"><h4>產品特色</h4><p>${p.feature.substring(0,200)}${p.feature.length>200?'…':''}</p></div>`:''}
+    ${p.feature?`<div class="modal-sec"><h4>產品特色</h4><p style="white-space:pre-wrap">${p.feature.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p></div>`:''}
     ${p.certs.length?`<div class="modal-sec"><h4>認證</h4><div style="display:flex;gap:5px;flex-wrap:wrap">${p.certs.map(c=>`<span class="tag">${c}</span>`).join('')}</div></div>`:''}
     <div class="modal-sec"><h4>選擇規格加入提品表</h4>${vhtml}</div>
     <button class="modal-done" onclick="closeModal()">完成選擇</button>`;
@@ -1204,11 +1204,10 @@ async function exportPPTX() {
 
     if (p.feature) {
       slide.addText('特色說明', { x:CX, y:0.72, w:CW, h:0.2, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
-      const featLines = p.feature.split('\n').map(l => l.trim()).filter(l => l);
-      const lc = featLines.length;
+      const lc = p.feature.split('\n').filter(l => l.trim()).length;
       // 依行數動態縮小字型（最小 7pt），確保全部可見
       const fs = lc <= 9 ? 10 : lc <= 13 ? 9 : lc <= 18 ? 8 : 7;
-      slide.addText(featLines.join('\n'), { x:CX, y:FEAT_TEXT_Y, w:CW, h:FEAT_MAX_H, fontSize:fs, color:CT, margin:0 });
+      slide.addText(p.feature, { x:CX, y:FEAT_TEXT_Y, w:CW, h:FEAT_MAX_H, fontSize:fs, color:CT, margin:0 });
     }
 
     // 材質成分（保留原始換行格式，固定在頁腳上方）
