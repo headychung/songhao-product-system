@@ -1197,14 +1197,11 @@ async function exportPPTX() {
     slide.addShape(pres.shapes.RECTANGLE, { x:DIV_X, y:0.7, w:0.02, h:4.35, fill:{color:CB}, line:{color:CB} });
 
     // ── 右欄：固定錨點版面 ──
-    // 特色說明 → 認證 → 材質成分，由上往下排列
-    const CERT_LBL_Y  = 3.72;   // 認證標籤
-    const CERT_TEXT_Y = 3.98;   // 認證內文
-    const CERT_TEXT_H = 0.38;   // 認證內文高度（可換行）
-    const MAT_LBL_Y   = 4.40;   // 材質成分標籤
-    const MAT_TEXT_Y  = 4.66;   // 材質成分內文
-    const FEAT_TEXT_Y = 1.02;   // 特色說明內文起點（標籤 0.26 + 間距 0.04）
-    const FEAT_MAX_H  = CERT_LBL_Y - FEAT_TEXT_Y - 0.06; // ~2.64"
+    // 特色說明佔主體；材質成分固定在頁腳上方
+    const MAT_LBL_Y   = 4.22;   // 材質成分標籤
+    const MAT_TEXT_Y  = 4.52;   // 材質成分內文
+    const FEAT_TEXT_Y = 1.02;   // 特色說明內文起點
+    const FEAT_MAX_H  = MAT_LBL_Y - FEAT_TEXT_Y - 0.06; // ~3.14"
 
     if (p.feature) {
       slide.addShape(pres.shapes.RECTANGLE, { x:CX, y:0.72, w:CW, h:0.26, fill:{color:'EBEBEB'}, line:{color:'EBEBEB'} });
@@ -1214,27 +1211,23 @@ async function exportPPTX() {
       slide.addText(p.feature, { x:CX, y:FEAT_TEXT_Y, w:CW, h:FEAT_MAX_H, fontSize:fs, color:CT, margin:0 });
     }
 
-    // 認證（完整顯示，可換行）
-    if (p.certs.length) {
-      slide.addShape(pres.shapes.RECTANGLE, { x:CX, y:CERT_LBL_Y, w:CW, h:0.26, fill:{color:'EBEBEB'}, line:{color:'EBEBEB'} });
-      slide.addText('認證', { x:CX, y:CERT_LBL_Y, w:CW, h:0.26, fontSize:10, color:'444444', bold:true, valign:'middle', margin:[0,6,0,6] });
-      const certStr = p.certs.map(c => '✓ ' + c).join('   ');
-      slide.addText(certStr, { x:CX, y:CERT_TEXT_Y, w:CW, h:CERT_TEXT_H, fontSize:9.5, color:CT, wrap:true, margin:0 });
-    }
-
     // 材質成分
     if (p.material) {
       slide.addShape(pres.shapes.RECTANGLE, { x:CX, y:MAT_LBL_Y, w:CW, h:0.26, fill:{color:'EBEBEB'}, line:{color:'EBEBEB'} });
       slide.addText('材質成分', { x:CX, y:MAT_LBL_Y, w:CW, h:0.26, fontSize:10, color:'444444', bold:true, valign:'middle', margin:[0,6,0,6] });
-      slide.addText(p.material.trim(), { x:CX, y:MAT_TEXT_Y, w:CW, h:0.46, fontSize:9.5, color:CT, margin:0 });
+      slide.addText(p.material.trim(), { x:CX, y:MAT_TEXT_Y, w:CW, h:0.6, fontSize:9.5, color:CT, margin:0 });
     }
 
-    // ── 頁腳 ──
+    // ── 頁腳（品牌／産地／QMAX 左側；認證全數顯示右側）──
     slide.addShape(pres.shapes.RECTANGLE, { x:0, y:5.175, w:10, h:0.45, fill:{color:'F0F0F0'}, line:{color:CB} });
     const footParts = [p.brand];
     if (p.origin) footParts.push(p.origin);
     if (p.qmax) footParts.push('QMAX ' + p.qmax);
-    slide.addText(footParts.join('  |  '), { x:0.25, y:5.175, w:9.5, h:0.45, fontSize:9, color:CM, valign:'middle', margin:0 });
+    slide.addText(footParts.join('  |  '), { x:0.25, y:5.175, w:4.5, h:0.45, fontSize:9, color:CM, valign:'middle', margin:0 });
+    if (p.certs.length) {
+      const certStr = p.certs.map(c => '✓ ' + c).join('   ');
+      slide.addText(certStr, { x:4.9, y:5.175, w:4.85, h:0.45, fontSize:9, color:CM, valign:'middle', align:'right', wrap:true, margin:0 });
+    }
   }
 
   const today = new Date().toLocaleDateString('zh-TW').replace(/\//g, '');
