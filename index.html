@@ -502,8 +502,14 @@ function parseSheet(rows, category) {
   let curSupply1 = null, curSupply2 = null, curSupply3 = null;
   let idx = 1;
 
-  // 只接受看起來像國家/地區的字串：不含數字、不以 ASCII 字母開頭（規格碼如 Q雙人、SS單人 等都以英文字母開頭）
-  const isValidOrigin = s => s && s.length >= 2 && s.length <= 10 && !/\d/.test(s) && !/^\w/.test(s) && s !== '産地' && s !== '產地';
+  // 只接受中文國名：第一個字元必須是 CJK 漢字（U+4E00–U+9FFF），排除規格碼（半形/全形英文字母開頭）
+  const isValidOrigin = s => {
+    if (!s || s.length < 2 || s.length > 10) return false;
+    if (/\d/.test(s)) return false;
+    if (s === '産地' || s === '產地') return false;
+    const c = s.charCodeAt(0);
+    return (c >= 0x4E00 && c <= 0x9FFF) || (c >= 0x3400 && c <= 0x4DBF);
+  };
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
