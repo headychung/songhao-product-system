@@ -1041,6 +1041,34 @@ async function loadScript(src) {
 // 嘗試將圖片 URL 轉為 base64（處理 CORS；失敗回傳 null）
 async function imgToBase64(url) {
   if (!url) return null;
+
+  // fetch + FileReader 方式（不依賴 canvas CORS）
+  const fetchToBase64 = async (fetchUrl) => {
+    try {
+      const resp = await fetch(fetchUrl, { signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      return await new Promise(res => {
+        const reader = new FileReader();
+        reader.onloadend = () => res(reader.result ? reader.result.replace('data:', '') : null);
+        reader.onerror = () => res(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch(e) { return null; }
+  };
+
+  // 1. 直接 fetch（非 Google Drive URL 通常可用）
+  if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) {
+    const r = await fetchToBase64(url);
+    if (r) return r;
+  }
+
+  // 2. 透過 CORS proxy（Google Drive thumbnail 需要此方式）
+  const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+  const r2 = await fetchToBase64(proxy);
+  if (r2) return r2;
+
+  // 3. Canvas fallback（部分環境仍可用）
   return new Promise(resolve => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
