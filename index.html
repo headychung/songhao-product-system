@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>嵩昊 提品系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #1F1F1F; --primary-light: #F2F2F2; --accent: #4A4A4A;
+  --bg: #F8F8F8; --card: #FFFFFF; --border: #E5E5E5;
+  --text: #1A1A1A; --muted: #787878; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+.header {
+  background: var(--primary); color: white; padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  flex-wrap: wrap; gap: 10px;
+}
+.logo { font-size: 18px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+.logo span { color: rgba(255,255,255,0.55); font-weight: 400; font-size: 13px; }
+.header-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.proposal-title-input {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px; width: 220px;
+}
+.proposal-title-input::placeholder { color: rgba(255,255,255,0.6); }
+.header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.badge-count { background: var(--accent); color: white; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+.sync-tag { font-size: 11px; color: rgba(255,255,255,0.65); white-space: nowrap; }
+.btn { padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+.btn-white { background: white; color: var(--primary); }
+.btn-white:hover { background: #f0f4f8; }
+.btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; }
+.btn-outline:hover { background: rgba(255,255,255,0.1); }
+
+/* Loading & Error */
+.screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 54px); gap: 16px; padding: 24px; text-align: center; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-box { background: #fdecea; border-radius: 8px; padding: 16px 20px; max-width: 500px; color: #c0392b; font-size: 13px; line-height: 1.6; }
+.retry-btn { background: var(--primary); color: white; border: none; border-radius: 6px; padding: 8px 20px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+
+/* Layout */
+.layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 54px); overflow: hidden; }
+.catalog-panel { overflow-y: auto; padding: 20px; }
+.proposal-panel { background: white; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+
+/* Controls */
+.catalog-controls { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.search-box {
+  flex: 1; min-width: 180px; padding: 8px 12px 8px 32px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7A8D' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 10px center no-repeat;
+  font-size: 14px; outline: none;
+}
+.search-box:focus { border-color: var(--primary); }
+/* Filter */
+.filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-dropdowns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.f-dropdown { position: relative; }
+.f-dd-btn {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: 6px; border: 1px solid var(--primary); background: var(--primary-light);
+  cursor: pointer; font-size: 13px; white-space: nowrap; transition: all 0.2s;
+}
+.f-dd-btn:hover { background: #d4e6f7; }
+.f-dd-btn.has-selection { background: var(--primary); border-color: var(--primary); }
+.f-dd-label { font-weight: 700; color: var(--primary); font-size: 12px; }
+.f-dd-btn.has-selection .f-dd-label { color: white; }
+.f-dd-count { background: var(--accent); color: white; border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+.f-dd-arrow { font-size: 9px; color: var(--primary); transition: transform 0.2s; }
+.f-dd-btn.has-selection .f-dd-arrow { color: rgba(255,255,255,0.8); }
+.f-dd-btn.dd-open .f-dd-arrow { transform: rotate(180deg); }
+.f-dd-menu {
+  display: none; position: absolute; top: calc(100% + 5px); left: 0;
+  background: white; border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 170px; z-index: 50;
+  padding: 5px 0; max-height: 260px; overflow-y: auto;
+}
+.f-dd-menu.dd-open { display: block; }
+.f-option { display: flex; align-items: center; gap: 9px; padding: 8px 14px; cursor: pointer; font-size: 13px; transition: background 0.15s; user-select: none; }
+.f-option:hover { background: var(--bg); }
+.f-option input[type=checkbox] { cursor: pointer; accent-color: var(--primary); width: 14px; height: 14px; flex-shrink: 0; }
+.filter-clear-btn { font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--border); cursor: pointer; padding: 5px 10px; border-radius: 6px; transition: all 0.2s; white-space: nowrap; }
+.filter-clear-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Export dropdown */
+.export-dd { position: relative; display: inline-block; }
+.export-dd-menu { display: none; position: absolute; right: 0; top: calc(100% + 4px); background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.12); min-width: 145px; z-index: 200; overflow: hidden; }
+.export-dd-menu.open { display: block; }
+.export-dd-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border: none; background: white; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: background 0.15s; }
+.export-dd-item:hover { background: var(--bg); }
+.export-dd-item .tmpl-label { font-size: 11px; color: var(--muted); font-weight: 400; display: block; margin-top: 1px; }
+
+.category-tabs { display: flex; gap: 6px; }
+.tab-btn { padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 13px; color: var(--muted); transition: all 0.2s; white-space: nowrap; }
+.tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.tab-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+/* Cards */
+.section-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 4px; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.product-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s; position: relative; }
+.product-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.product-card.selected { border-color: var(--primary); background: var(--primary-light); }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 7px; }
+.card-brand { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.card-name { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.card-name a { color: var(--primary); text-decoration: none; }
+.card-name a:hover { text-decoration: underline; }
+.stock-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; white-space: nowrap; margin-left: 8px; flex-shrink: 0; }
+.stock-ok { background: #EFEFEF; color: #1F1F1F; }
+.stock-low { background: #E5E5E5; color: #444444; }
+.stock-none { background: #DFDFDF; color: #707070; }
+.stock-unknown { background: #F5F5F5; color: #AAAAAA; }
+.card-sizes { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.card-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: #F0F0F0; color: #444444; }
+.card-feature { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.card-prices { display: flex; gap: 12px; align-items: baseline; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.price-suggest { font-size: 15px; font-weight: 700; color: var(--primary); }
+.price-supply { font-size: 12px; color: var(--accent); font-weight: 600; }
+.price-label { font-size: 10px; color: var(--muted); display: block; }
+/* Card image thumbnail */
+.card-thumb { max-height: 160px; margin: -14px -14px 10px; border-radius: 10px 10px 0 0; overflow: hidden; background: #f0f2f5; display: flex; align-items: center; justify-content: center; }
+.card-thumb img { width: 100%; height: auto; max-height: 160px; object-fit: contain; display: block; }
+
+.add-btn {
+  position: absolute; bottom: 12px; right: 12px;
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: var(--primary); color: white; font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; box-shadow: 0 2px 6px rgba(45,90,142,0.3);
+}
+.add-btn:hover { background: #1e3f6b; transform: scale(1.1); }
+.sel-dot { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; background: var(--primary); color: white; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+/* Proposal Panel */
+.proposal-header { padding: 16px 18px 12px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.proposal-header h3 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.proposal-header p { font-size: 12px; color: var(--muted); }
+.proposal-list { flex: 1; overflow-y: auto; padding: 12px; }
+.proposal-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--muted); text-align: center; gap: 8px; }
+.proposal-empty .icon { font-size: 40px; opacity: 0.4; }
+.proposal-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.pitem-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.pitem-name { font-size: 13px; font-weight: 600; flex: 1; padding-right: 8px; line-height: 1.4; }
+.pitem-name a { color: var(--primary); text-decoration: none; }
+.pitem-name a:hover { text-decoration: underline; }
+.remove-btn { background: none; border: none; cursor: pointer; color: #CBD2DA; font-size: 16px; padding: 0; transition: color 0.2s; flex-shrink: 0; }
+.remove-btn:hover { color: #E53935; }
+.pitem-meta { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+.pitem-variants { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+.vtag { font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary); cursor: pointer; transition: all 0.15s; }
+.vtag:hover { background: #fdecea; border-color: #E53935; color: #E53935; }
+.pitem-prices { display: flex; gap: 12px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+.proposal-footer { padding: 14px 18px; border-top: 1px solid var(--border); background: var(--bg); }
+.proposal-stats { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--muted); }
+.stat-val { font-size: 15px; font-weight: 700; color: var(--text); display: block; }
+.export-actions { display: flex; gap: 8px; }
+.fbtn { flex: 1; padding: 8px 14px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; font-weight: 700; transition: all 0.2s; }
+.fbtn-primary { background: var(--primary); color: white; }
+.fbtn-primary:hover { background: #1e3f6b; }
+.fbtn-secondary { background: white; color: var(--primary); border: 1px solid var(--primary); }
+.fbtn-secondary:hover { background: var(--primary-light); }
+
+/* Product Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; padding: 28px; position: relative; }
+.modal-close { position: absolute; top: 16px; right: 18px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+.modal h2 { font-size: 18px; margin-bottom: 6px; line-height: 1.4; }
+.modal-sec { margin-top: 16px; }
+.modal-sec h4 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.modal-sec p { font-size: 13px; color: var(--text); line-height: 1.7; }
+.variant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; margin-top: 8px; }
+.variant-card { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px; cursor: pointer; transition: all 0.2s; }
+.variant-card:hover { border-color: var(--primary); }
+.variant-card.checked { border-color: var(--primary); background: var(--primary-light); }
+.variant-card label { cursor: pointer; display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
+.variant-card .vn { font-weight: 600; }
+.variant-card .vm { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.modal-done { width: 100%; margin-top: 20px; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.modal-done:hover { background: #1e3f6b; }
+
+/* Preview Modal */
+.preview-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+.preview-overlay.open { display: flex; }
+.preview-modal { background: white; border-radius: 12px; width: 100%; max-width: 1100px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+.preview-hd { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--primary); color: white; }
+.preview-hd h3 { font-size: 16px; }
+.preview-body { overflow-y: auto; padding: 24px; }
+.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.preview-table th { background: var(--primary); color: white; padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.preview-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+.preview-table tr:nth-child(even) td { background: #FAFBFC; }
+.preview-table tr:hover td { background: var(--primary-light); }
+
+.toast { position: fixed; bottom: 24px; right: 24px; background: #1A2332; color: white; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 500; opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; height: auto; }
+  .proposal-panel { border-left: none; border-top: 1px solid var(--border); min-height: 400px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">嵩昊 <span>提品系統</span></div>
+    <input type="text" class="proposal-title-input" id="proposalTitle" placeholder="提品表名稱" value="202606 夏季涼感寢具提品表">
+  </div>
+  <div class="header-actions">
+    <span class="sync-tag" id="syncTag">讀取中…</span>
+    <button class="btn btn-outline" id="syncBtn" onclick="syncData()" title="從 Google Sheets 重新載入最新資料">🔄 同步</button>
+    <span class="badge-count" id="selectedCount">已選 0 件</span>
+    <button class="btn btn-outline" onclick="openPreview()">📋 預覽</button>
+    <div class="export-dd">
+      <button class="btn btn-white" onclick="toggleExportDd('hdr')">📥 匯出 ▾</button>
+      <div class="export-dd-menu" id="exportDd-hdr">
+        <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()">💰 價格表-T1<span class="tmpl-label">含供應價T1、庫存（內部用）</span></button>
+        <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()">💰 價格表-T2<span class="tmpl-label">含供應價T2、庫存（內部用）</span></button>
+        <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()">💰 價格表-T3<span class="tmpl-label">含供應價T3、庫存（內部用）</span></button>
+        <button class="export-dd-item" onclick="exportPPTX();closeExportDd()">📊 提品簡報<span class="tmpl-label">PowerPoint，一產品一頁</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <div style="color:var(--muted)">從 Google Sheets 讀取最新產品資料…</div>
+</div>
+
+<!-- ERROR -->
+<div class="screen" id="errorScreen" style="display:none">
+  <div class="error-box" id="errorMsg"></div>
+  <button class="retry-btn" onclick="loadData()">重新載入</button>
+</div>
+
+<!-- MAIN (hidden until data loads) -->
+<div class="layout" id="mainLayout" style="display:none">
+  <div class="catalog-panel">
+    <div class="catalog-controls">
+      <input type="text" class="search-box" id="searchInput" placeholder="搜尋品名、材質…" oninput="renderCatalog()">
+      <div class="category-tabs">
+        <button class="tab-btn active" onclick="setTab('all',this)">全部</button>
+        <button class="tab-btn" onclick="setTab('涼感被',this)">涼感被</button>
+        <button class="tab-btn" onclick="setTab('夏季薄被',this)">夏季薄被</button>
+        <button class="tab-btn" onclick="setTab('四季被',this)">四季被</button>
+        <button class="tab-btn" onclick="setTab('冬被',this)">冬被</button>
+        <button class="tab-btn" onclick="setTab('OEM',this)">OEM</button>
+        <button class="tab-btn" onclick="setTab('床墊',this)">床墊</button>
+        <button class="tab-btn" onclick="setTab('枕頭套',this)">枕頭套</button>
+        <button class="tab-btn" onclick="setTab('抱枕',this)">抱枕</button>
+      </div>
+    </div>
+    <!-- FILTER DROPDOWNS -->
+    <div class="filter-dropdowns" id="filterPanel">
+      <!-- 品牌 -->
+      <div class="f-dropdown" id="fdd-brand">
+        <button class="f-dd-btn" id="fdb-brand" onclick="toggleDd('brand')">
+          <span class="f-dd-label">品牌</span>
+          <span class="f-dd-count" id="fdc-brand" style="display:none">0</span>
+          <span class="f-dd-arrow">▾</span>
+        </button>
+        <div class="f-dd-menu" id="fdm-brand"><!-- 動態產生 --></div>
+      </div>
+      <!-- 產地 -->
+      <div class="f-dropdown" id="fdd-origin">
+        <button class="f-dd-btn" id="fdb-origin" onclick="toggleDd('origin')">
+          <span class="f-dd-label">產地</span>
+          <span class="f-dd-count" id="fdc-origin" style="display:none">0</span>
+          <span class="f-dd-arrow">▾</span>
+        </button>
+        <div class="f-dd-menu" id="fdm-origin"><!-- 動態產生 --></div>
+      </div>
+      <!-- 庫存 -->
+      <div class="f-dropdown" id="fdd-stock">
+        <button class="f-dd-btn" id="fdb-stock" onclick="toggleDd('stock')">
+          <span class="f-dd-label">庫存</span>
+          <span class="f-dd-count" id="fdc-stock" style="display:none">0</span>
+          <span class="f-dd-arrow">▾</span>
+        </button>
+        <div class="f-dd-menu" id="fdm-stock">
+          <label class="f-option"><input type="checkbox" data-group="stock" data-val="ok" onchange="onFilterChange(this)"> 有庫存</label>
+          <label class="f-option"><input type="checkbox" data-group="stock" data-val="low" onchange="onFilterChange(this)"> 庫存低</label>
+          <label class="f-option"><input type="checkbox" data-group="stock" data-val="none" onchange="onFilterChange(this)"> 無庫存</label>
+          <label class="f-option"><input type="checkbox" data-group="stock" data-val="unknown" onchange="onFilterChange(this)"> 確認中</label>
+        </div>
+      </div>
+      <!-- 供應價 -->
+      <div class="f-dropdown" id="fdd-supply">
+        <button class="f-dd-btn" id="fdb-supply" onclick="toggleDd('supply')">
+          <span class="f-dd-label">供應價</span>
+          <span class="f-dd-count" id="fdc-supply" style="display:none">0</span>
+          <span class="f-dd-arrow">▾</span>
+        </button>
+        <div class="f-dd-menu" id="fdm-supply">
+          <label class="f-option"><input type="checkbox" data-group="supply" data-val="0-1000" onchange="onFilterChange(this)"> NT$1,000 以下</label>
+          <label class="f-option"><input type="checkbox" data-group="supply" data-val="1000-1500" onchange="onFilterChange(this)"> NT$1,000–1,500</label>
+          <label class="f-option"><input type="checkbox" data-group="supply" data-val="1500-99999" onchange="onFilterChange(this)"> NT$1,500 以上</label>
+        </div>
+      </div>
+      <button class="filter-clear-btn" id="filterClearBtn" onclick="clearFilters()" style="display:none">✕ 清除篩選</button>
+    </div>
+    <div id="catalogContainer"></div>
+  </div>
+  <div class="proposal-panel">
+    <div class="proposal-header"><h3>📦 提品清單</h3><p>點左側 + 按鈕加入，點規格標籤移除</p></div>
+    <div class="proposal-list" id="proposalList">
+      <div class="proposal-empty"><div class="icon">📋</div><div>尚未選擇產品</div><div style="font-size:12px">點左側產品卡片的 + 按鈕加入</div></div>
+    </div>
+    <div class="proposal-footer">
+      <div class="proposal-stats" id="proposalStats" style="display:none">
+        <div><span class="stat-val" id="statItems">0</span>品項數</div>
+        <div><span class="stat-val" id="statVariants">0</span>規格數</div>
+      </div>
+      <div class="export-actions">
+        <button class="fbtn fbtn-secondary" onclick="openPreview()">預覽</button>
+        <div class="export-dd" style="flex:1">
+          <button class="fbtn fbtn-primary" style="width:100%" onclick="toggleExportDd('foot')">📥 匯出 ▾</button>
+          <div class="export-dd-menu" id="exportDd-foot">
+            <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()">💰 價格表-T1<span class="tmpl-label">含供應價T1、庫存（內部用）</span></button>
+            <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()">💰 價格表-T2<span class="tmpl-label">含供應價T2、庫存（內部用）</span></button>
+            <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()">💰 價格表-T3<span class="tmpl-label">含供應價T3、庫存（內部用）</span></button>
+            <button class="export-dd-item" onclick="exportPPTX();closeExportDd()">📊 提品簡報<span class="tmpl-label">PowerPoint，一產品一頁</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="productModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalBody"></div></div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div class="preview-overlay" id="previewModal" onclick="if(event.target===this)closePreview()">
+  <div class="preview-modal">
+    <div class="preview-hd">
+      <h3 id="previewTitle">提品表預覽</h3>
+      <div style="display:flex;gap:8px">
+        <div class="export-dd">
+          <button class="btn btn-white" style="font-size:12px" onclick="toggleExportDd('prev')">📥 匯出 ▾</button>
+          <div class="export-dd-menu" id="exportDd-prev">
+            <button class="export-dd-item" onclick="exportExcel('價格表-T1');closeExportDd()">💰 價格表-T1</button>
+            <button class="export-dd-item" onclick="exportExcel('價格表-T2');closeExportDd()">💰 價格表-T2</button>
+            <button class="export-dd-item" onclick="exportExcel('價格表-T3');closeExportDd()">💰 價格表-T3</button>
+            <button class="export-dd-item" onclick="exportPPTX();closeExportDd()">📊 提品簡報</button>
+          </div>
+        </div>
+        <button class="btn btn-outline" onclick="closePreview()" style="font-size:12px">✕ 關閉</button>
+      </div>
+    </div>
+    <div class="preview-body" id="previewBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────
+// CONFIG
+// ─────────────────────────────────
+const SHEET_ID = '1anduyfSVX6DeakEeEkLJ5YfLd7aTIPB4_nPm8j0URWI';
+
+// ─────────────────────────────────
+// STATE
+// ─────────────────────────────────
+let PRODUCTS = [];
+let selected = {};
+let currentTab = 'all';
+let activeFilters = { brand: new Set(), origin: new Set(), stock: new Set(), supply: new Set() };
+
+// ─────────────────────────────────
+// GVIZ LOADER（gviz 固定呼叫 google.visualization.Query.setResponse）
+// ─────────────────────────────────
+function loadSheetGVIZ(sheetName) {
+  return new Promise((resolve, reject) => {
+    // gviz API 永遠呼叫 google.visualization.Query.setResponse，不理會自訂 callback 名
+    window.google = window.google || {};
+    window.google.visualization = window.google.visualization || {};
+    window.google.visualization.Query = window.google.visualization.Query || {};
+
+    const timer = setTimeout(() => {
+      window.google.visualization.Query.setResponse = null;
+      reject(new Error(`讀取「${sheetName}」逾時，請重試`));
+    }, 15000);
+
+    window.google.visualization.Query.setResponse = function(res) {
+      clearTimeout(timer);
+      window.google.visualization.Query.setResponse = null;
+      if (!res || res.status !== 'ok') {
+        const msg = res && res.errors ? res.errors.map(e => e.detailed_message || e.message).join('; ') : '未知錯誤';
+        reject(new Error('Google Sheets 回傳錯誤：' + msg));
+        return;
+      }
+      // 將 gviz DataTable 轉為 2D 陣列（同 CSV 解析結果格式）
+      const cols = res.table.cols.length;
+      const rows = res.table.rows.map(row => {
+        const r = new Array(cols).fill('');
+        if (row && row.c) row.c.forEach((cell, i) => { if (cell && cell.v != null) r[i] = cell.v.toString(); });
+        return r;
+      });
+      resolve(rows);
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+    script.onerror = () => {
+      clearTimeout(timer);
+      window.google.visualization.Query.setResponse = null;
+      reject(new Error('網路連線失敗，請確認網路'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// ─────────────────────────────────
+// PARSE HELPERS
+// ─────────────────────────────────
+const g = (row, i) => (row && row[i] != null ? row[i].toString().trim() : '');
+
+// 將各種 Google Drive URL 格式統一轉為可嵌入的縮圖 URL
+// 支援：分享連結 / uc?id= / open?id= / thumbnail / lh3 / 純 http URL
+function toDriveImgUrl(raw) {
+  if (!raw) return null;
+  raw = raw.trim();
+  // 非 Drive URL → 直接用（含 lh3.googleusercontent.com 等 Google CDN）
+  if (!raw.includes('drive.google.com') && !raw.includes('docs.google.com')) {
+    return raw.startsWith('http') ? raw : null;
+  }
+  // 已是 thumbnail URL → 直接用
+  if (raw.includes('drive.google.com/thumbnail')) return raw;
+  // 嘗試萃取 FILE_ID
+  let id = null;
+  const m = raw.match(/\/d\/([a-zA-Z0-9_-]{10,})/);   // /d/FILE_ID
+  if (m) {
+    id = m[1];
+  } else {
+    try {
+      const q = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
+      id = q.searchParams.get('id') || q.searchParams.get('open');
+    } catch(e) { /* 非法 URL，忽略 */ }
+  }
+  if (!id) return null;
+  // 使用 thumbnail API，最穩定且不需重新導向
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+}
+const parsePrice = s => { const n = parseFloat(s.replace(/[NT$,\s]/g,'')); return isNaN(n) ? null : n; };
+const parseStock = s => { const n = parseInt(s.replace(/,/g,'')); return isNaN(n) ? null : n; };
+const isNumStr = s => /^\d+$/.test(s.replace(/,/g,''));
+const extractQmax = t => { if(!t) return null; const m = t.match(/(?:Q-max|Qmax|QMAX)[^\d]*([\d.]+)/i); return m?m[1]:null; };
+const parseCerts = s => s.split('\n').map(x=>x.replace(/^✔\s*/,'').trim()).filter(x=>x&&!x.includes('FITI')&&!x.includes('國際')&&!x.includes('認證機構'));
+const extractBrand = name => { const m = name.match(/^\[([^\]]+)\]/); if(m) return m[1]; const w = name.match(/^([A-Z]{2,})\s/); if(w) return w[1]; return name.split(' ')[0]; };
+const cleanName = s => s.replace(/\n/g,' ').replace(/\s+/g,' ').trim();
+const stripBrand = s => s.replace(/^\[[^\]]+\]\s*/,'').trim(); // 移除開頭的 [品牌] 標記，僅用於顯示名稱
+
+// ─────────────────────────────────
+// PARSE（通用解析器，適用所有分頁）
+// 0照片 1品名 2材質 3特色 4認證 5產地 6規格 7尺寸 8顏色 9庫存 10原定價 11建議售價
+// 12供應價T1 13供應價T2 14供應價T3 15連結
+// （A欄編號已刪除，所有索引較原始設計 -1）
+// 新品觸發：B欄(1)有品名即為新產品
+// 價格／規格 carry-forward：每次出現即更新，顏色續列自動沿用
+// ─────────────────────────────────
+const CAT_PREFIX = { '涼感被':'l', '夏季薄被':'s', '四季被':'q', '冬被':'d', 'OEM':'o', '床墊':'m', '枕頭套':'p', '抱枕':'a' };
+
+function parseSheet(rows, category) {
+  const products = [];
+  let cur = null, curSize = '', curDim = '';
+  let curRetail = null, curSuggest = null;
+  let curSupply1 = null, curSupply2 = null, curSupply3 = null;
+  let idx = 1;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row.some(c => c)) continue;
+    const 品名 = g(row, 1);
+
+    if (品名) {
+      const feat = g(row, 3), mat = g(row, 2), 庫存raw = g(row, 9);
+      cur = {
+        id: `${CAT_PREFIX[category]||category[0]}${idx++}`, category,
+        image: toDriveImgUrl(g(row, 0)),
+        brand: extractBrand(cleanName(品名)),
+        name: stripBrand(cleanName(品名)),
+        material: mat, feature: feat,
+        origin: g(row, 5) || null,
+        certs: parseCerts(g(row, 4)),
+        qmax: extractQmax(feat) || extractQmax(mat),
+        link: g(row, 15) || null,
+        stockNote: !isNumStr(庫存raw) && 庫存raw ? 庫存raw : null,
+        variants: []
+      };
+      curSize = ''; curDim = '';
+      curRetail = null; curSuggest = null;
+      curSupply1 = null; curSupply2 = null; curSupply3 = null;
+      products.push(cur);
+    }
+
+    if (!cur) continue;
+
+    const 規格 = g(row, 6), 顏色 = g(row, 8), 庫存raw = g(row, 9);
+    const link = g(row, 15);
+    if (link && !cur.link) cur.link = link;
+    if (規格) { curSize = 規格; curDim = g(row, 7) || curDim; }
+
+    // 產地 carry-forward（取最早出現的非空值）
+    if (!cur.origin) cur.origin = g(row, 5) || null;
+
+    // 價格 carry-forward：出現非空值即更新
+    const r = parsePrice(g(row, 10)), s = parsePrice(g(row, 11));
+    const p1 = parsePrice(g(row, 12)), p2 = parsePrice(g(row, 13)), p3 = parsePrice(g(row, 14));
+    if (r != null) curRetail = r;
+    if (s != null) curSuggest = s;
+    if (p1 != null) curSupply1 = p1;
+    if (p2 != null) curSupply2 = p2;
+    if (p3 != null) curSupply3 = p3;
+
+    const isNote = 庫存raw && !isNumStr(庫存raw);
+    if (isNote && !cur.stockNote) cur.stockNote = 庫存raw;
+
+    if (curSize && (顏色 || 規格)) {
+      cur.variants.push({
+        id: `${cur.id}-${curSize}-${顏色||'n'}`,
+        size: curSize, dim: curDim, color: 顏色 || '-',
+        stock: isNote ? 0 : parseStock(庫存raw),
+        priceRetail: curRetail,
+        priceSuggest: curSuggest,
+        priceSupply1: curSupply1,
+        priceSupply2: curSupply2,
+        priceSupply3: curSupply3,
+      });
+    }
+  }
+  return products;
+}
+
+// ─────────────────────────────────
+// LOAD DATA
+// ─────────────────────────────────
+async function loadData() {
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('errorScreen').style.display = 'none';
+  document.getElementById('mainLayout').style.display = 'none';
+
+  try {
+    // 必須循序載入：gviz 固定呼叫同一個 google.visualization.Query.setResponse，不能並行
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取涼感被…';
+    const rows1 = await loadSheetGVIZ('涼感被');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取夏季薄被…';
+    const rows2 = await loadSheetGVIZ('夏季薄被');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取四季被…';
+    const rows3 = await loadSheetGVIZ('四季被');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取冬被…';
+    const rows4 = await loadSheetGVIZ('冬被');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取OEM…';
+    const rows5 = await loadSheetGVIZ('OEM');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取床墊…';
+    const rows6 = await loadSheetGVIZ('床墊');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取枕頭套…';
+    const rows7 = await loadSheetGVIZ('枕頭套');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取抱枕…';
+    const rows8 = await loadSheetGVIZ('抱枕');
+    PRODUCTS = [
+      ...parseSheet(rows1, '涼感被'),
+      ...parseSheet(rows2, '夏季薄被'),
+      ...parseSheet(rows3, '四季被'),
+      ...parseSheet(rows4, '冬被'),
+      ...parseSheet(rows5, 'OEM'),
+      ...parseSheet(rows6, '床墊'),
+      ...parseSheet(rows7, '枕頭套'),
+      ...parseSheet(rows8, '抱枕'),
+    ];
+
+    const now = new Date();
+    document.getElementById('syncTag').textContent =
+      `✓ 同步於 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainLayout').style.display = 'grid';
+    buildFilters();
+    renderCatalog();
+  } catch(e) {
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('errorScreen').style.display = 'flex';
+    document.getElementById('errorMsg').innerHTML =
+      `<strong>資料讀取失敗</strong><br><br>` +
+      `可能原因：<br>` +
+      `① 網路連線異常（請確認已連上網路）<br>` +
+      `② 試算表權限不足（確認已設為「知道連結可檢視」）<br><br>` +
+      `錯誤訊息：${e.message}`;
+  }
+}
+
+// ─────────────────────────────────
+// SYNC（保留已選清單，重新拉資料）
+// ─────────────────────────────────
+async function syncData() {
+  const btn = document.getElementById('syncBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 同步中…'; }
+  document.getElementById('syncTag').textContent = '同步中…';
+
+  try {
+    const rows1 = await loadSheetGVIZ('涼感被');
+    const rows2 = await loadSheetGVIZ('夏季薄被');
+    const rows3 = await loadSheetGVIZ('四季被');
+    const rows4 = await loadSheetGVIZ('冬被');
+    const rows5 = await loadSheetGVIZ('OEM');
+    const rows6 = await loadSheetGVIZ('床墊');
+    const rows7 = await loadSheetGVIZ('枕頭套');
+    const rows8 = await loadSheetGVIZ('抱枕');
+    PRODUCTS = [
+      ...parseSheet(rows1, '涼感被'),
+      ...parseSheet(rows2, '夏季薄被'),
+      ...parseSheet(rows3, '四季被'),
+      ...parseSheet(rows4, '冬被'),
+      ...parseSheet(rows5, 'OEM'),
+      ...parseSheet(rows6, '床墊'),
+      ...parseSheet(rows7, '枕頭套'),
+      ...parseSheet(rows8, '抱枕'),
+    ];
+
+    const now = new Date();
+    document.getElementById('syncTag').textContent =
+      `✓ 同步於 ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+    // 清理已選中但已從 Sheet 移除的品項
+    const validIds = new Set(PRODUCTS.map(p => p.id));
+    Object.keys(selected).forEach(id => { if (!validIds.has(id)) delete selected[id]; });
+
+    buildFilters();
+    renderCatalog();
+    renderProposal();
+    showToast('✓ 資料已同步最新版本');
+  } catch(e) {
+    document.getElementById('syncTag').textContent = '⚠ 同步失敗';
+    showToast('同步失敗：' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 同步'; }
+  }
+}
+
+// ─────────────────────────────────
+// FILTERS
+// ─────────────────────────────────
+function buildFilters() {
+  const brands = [...new Set(PRODUCTS.map(p => p.brand).filter(Boolean))].sort();
+  document.getElementById('fdm-brand').innerHTML = brands.map(b =>
+    `<label class="f-option"><input type="checkbox" data-group="brand" data-val="${b}" onchange="onFilterChange(this)"> ${b}</label>`
+  ).join('');
+  const origins = [...new Set(PRODUCTS.map(p => p.origin).filter(Boolean))].sort();
+  document.getElementById('fdm-origin').innerHTML = origins.length
+    ? origins.map(o => `<label class="f-option"><input type="checkbox" data-group="origin" data-val="${o}" onchange="onFilterChange(this)"> ${o}</label>`).join('')
+    : '<div style="padding:8px 14px;font-size:12px;color:var(--muted)">尚無產地資料</div>';
+}
+
+function toggleDd(group) {
+  const btn = document.getElementById(`fdb-${group}`);
+  const menu = document.getElementById(`fdm-${group}`);
+  const isOpen = menu.classList.contains('dd-open');
+  // 關閉所有
+  document.querySelectorAll('.f-dd-menu.dd-open').forEach(m => m.classList.remove('dd-open'));
+  document.querySelectorAll('.f-dd-btn.dd-open').forEach(b => b.classList.remove('dd-open'));
+  if (!isOpen) { menu.classList.add('dd-open'); btn.classList.add('dd-open'); }
+}
+
+// 點選下拉選單外部時關閉
+document.addEventListener('click', e => {
+  if (!e.target.closest('.f-dropdown')) {
+    document.querySelectorAll('.f-dd-menu.dd-open').forEach(m => m.classList.remove('dd-open'));
+    document.querySelectorAll('.f-dd-btn.dd-open').forEach(b => b.classList.remove('dd-open'));
+  }
+});
+
+function onFilterChange(input) {
+  const { group, val } = input.dataset;
+  if (input.checked) activeFilters[group].add(val);
+  else activeFilters[group].delete(val);
+  updateFilterUI(group);
+  renderCatalog();
+}
+
+function updateFilterUI(group) {
+  const count = activeFilters[group].size;
+  const badge = document.getElementById(`fdc-${group}`);
+  const btn = document.getElementById(`fdb-${group}`);
+  badge.textContent = count;
+  badge.style.display = count ? 'inline' : 'none';
+  btn.classList.toggle('has-selection', count > 0);
+  // 清除按鈕
+  const total = activeFilters.brand.size + activeFilters.origin.size + activeFilters.stock.size + activeFilters.supply.size;
+  document.getElementById('filterClearBtn').style.display = total ? 'inline-block' : 'none';
+}
+
+function clearFilters() {
+  activeFilters = { brand: new Set(), origin: new Set(), stock: new Set(), supply: new Set() };
+  document.querySelectorAll('.f-dd-menu input[type=checkbox]').forEach(cb => cb.checked = false);
+  ['brand','origin','stock','supply'].forEach(g => updateFilterUI(g));
+  renderCatalog();
+}
+
+function passesFilter(p) {
+  if (activeFilters.brand.size && !activeFilters.brand.has(p.brand)) return false;
+  if (activeFilters.origin.size && !activeFilters.origin.has(p.origin)) return false;
+  if (activeFilters.stock.size && !activeFilters.stock.has(getStockStatus(p))) return false;
+  if (activeFilters.supply.size) {
+    const supplies = p.variants.map(v => v.priceSupply1).filter(v => v != null);
+    if (!supplies.length) return false;
+    const minSup = Math.min(...supplies);
+    const inRange = [...activeFilters.supply].some(r => {
+      const [lo, hi] = r.split('-').map(Number);
+      return minSup >= lo && minSup < hi;
+    });
+    if (!inRange) return false;
+  }
+  return true;
+}
+
+// ─────────────────────────────────
+// CATALOG
+// ─────────────────────────────────
+function setTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCatalog();
+}
+const stockLabel = { ok:'有庫存', low:'庫存低', none:'無庫存', unknown:'確認中' };
+const stockClass = { ok:'stock-ok', low:'stock-low', none:'stock-none', unknown:'stock-unknown' };
+
+function getStockStatus(p) {
+  if (p.stockNote) return 'none';
+  const vs = p.variants.filter(v => v.stock !== null);
+  if (!vs.length) return 'unknown';
+  const total = vs.reduce((s, v) => s + (v.stock||0), 0);
+  return total === 0 ? 'none' : total < 30 ? 'low' : 'ok';
+}
+function getPriceRange(p) {
+  const prices = p.variants.filter(v => v.priceSuggest).map(v => v.priceSuggest);
+  if (!prices.length) return '';
+  const mn = Math.min(...prices), mx = Math.max(...prices);
+  return mn === mx ? `NT$${mn.toLocaleString()}` : `NT$${mn.toLocaleString()}～${mx.toLocaleString()}`;
+}
+function getSelCount(p) { return p.variants.filter(v => selected[v.id]).length; }
+function nameHtml(p) {
+  return p.link
+    ? `<a href="${p.link}" target="_blank" onclick="event.stopPropagation()">${p.name} ↗</a>`
+    : p.name;
+}
+
+function renderCatalog() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const cats = currentTab === 'all' ? ['涼感被','夏季薄被','四季被','冬被','OEM','床墊','枕頭套','抱枕'] : [currentTab];
+  let html = '';
+  cats.forEach(cat => {
+    let prods = PRODUCTS.filter(p => p.category === cat);
+    if (q) prods = prods.filter(p =>
+      p.name.toLowerCase().includes(q) || p.material.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
+    );
+    prods = prods.filter(passesFilter);
+    if (!prods.length) return;
+    html += `<div class="section-title">${cat} · ${prods.length} 款</div><div class="product-grid">`;
+    prods.forEach(p => {
+      const st = getStockStatus(p), pr = getPriceRange(p), sc = getSelCount(p);
+      const sizes = [...new Set(p.variants.map(v => v.size))].join('、');
+      const supplies = p.variants.filter(v=>v.priceSupply1).map(v=>v.priceSupply1);
+      const minSup = supplies.length ? Math.min(...supplies) : null;
+      html += `
+        <div class="product-card${sc>0?' selected':''}" onclick="openProduct('${p.id}')">
+          ${p.image ? `<div class="card-thumb"><img src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.parentNode.style.display='none'"></div>` : ''}
+          ${sc > 0 ? `<div class="sel-dot">${sc}</div>` : ''}
+          <div class="card-header">
+            <div>
+              <div class="card-brand">${p.brand}${p.origin?' · '+p.origin:''}${p.qmax?' · QMAX '+p.qmax:''}</div>
+              <div class="card-name">${nameHtml(p)}</div>
+            </div>
+            <span class="stock-badge ${stockClass[st]}">${stockLabel[st]}</span>
+          </div>
+          <div class="card-sizes">📐 ${sizes}</div>
+          ${p.certs.length?`<div class="card-meta">${p.certs.slice(0,3).map(c=>`<span class="tag">✓ ${c}</span>`).join('')}</div>`:''}
+          <div class="card-feature">${(p.feature||'').substring(0,55)}${(p.feature||'').length>55?'…':''}</div>
+          ${pr?`<div class="card-prices">
+            <div><span class="price-label">建議售價</span><span class="price-suggest">${pr}</span></div>
+            ${minSup&&isFinite(minSup)?`<div><span class="price-label">供應T1起</span><span class="price-supply">NT$${minSup.toLocaleString()}</span></div>`:''}
+          </div>`:`<div class="card-prices"><span style="font-size:12px;color:var(--muted)">價格洽詢中</span></div>`}
+          <button class="add-btn" onclick="event.stopPropagation();quickAdd('${p.id}')">+</button>
+        </div>`;
+    });
+    html += '</div>';
+  });
+  if (!html) html = `<div style="text-align:center;padding:60px;color:var(--muted)">找不到相符產品</div>`;
+  document.getElementById('catalogContainer').innerHTML = html;
+}
+
+// ─────────────────────────────────
+// PRODUCT MODAL
+// ─────────────────────────────────
+function openProduct(pid) {
+  const p = PRODUCTS.find(x => x.id === pid);
+  if (!p) return;
+  let vhtml = '<div class="variant-grid">';
+  p.variants.forEach(v => {
+    const chk = selected[v.id] ? 'checked' : '';
+    const stk = v.stock === null ? '庫存確認中' : v.stock === 0 ? '無庫存' : `庫存 ${v.stock}`;
+    const stkCol = v.stock === null ? '#AAAAAA' : v.stock === 0 ? '#888888' : '#444444';
+    vhtml += `
+      <div class="variant-card${selected[v.id]?' checked':''}" id="vc-${v.id}" onclick="toggleV('${v.id}','${pid}')">
+        <label>
+          <input type="checkbox" ${chk} onclick="toggleV('${v.id}','${pid}');event.stopPropagation()" style="flex-shrink:0;margin-top:1px">
+          <div>
+            <div class="vn">${v.size}${v.color!=='-'?' · '+v.color:''}</div>
+            <div class="vm">${v.dim}</div>
+            ${v.priceSuggest?`<div class="vm" style="color:var(--primary);font-weight:700">售 NT$${v.priceSuggest.toLocaleString()}</div>`:''}
+            ${v.priceSupply1?`<div class="vm" style="color:#444">T1 NT$${v.priceSupply1.toLocaleString()}</div>`:''}
+            ${v.priceSupply2?`<div class="vm" style="color:#666">T2 NT$${v.priceSupply2.toLocaleString()}</div>`:''}
+            ${v.priceSupply3?`<div class="vm" style="color:#888">T3 NT$${v.priceSupply3.toLocaleString()}</div>`:''}
+            <div class="vm" style="color:${stkCol}">${stk}</div>
+          </div>
+        </label>
+      </div>`;
+  });
+  vhtml += '</div>';
+  document.getElementById('modalBody').innerHTML = `
+    ${p.image ? `<div style="margin:-28px -28px 20px;border-radius:12px 12px 0 0;overflow:hidden;background:#f0f2f5;max-height:360px;display:flex;align-items:center;justify-content:center"><img src="${p.image}" alt="${p.name}" style="width:100%;height:auto;max-height:360px;object-fit:contain;display:block" onerror="this.parentNode.style.display='none'"></div>` : ''}
+    <div class="card-brand" style="margin-bottom:4px">${p.brand}${p.origin?' · '+p.origin:''} · ${p.category}</div>
+    <h2>${nameHtml(p)}</h2>
+    ${p.qmax?`<span style="display:inline-block;background:#F0F0F0;color:#333333;padding:2px 9px;border-radius:4px;font-size:12px;font-weight:700;margin-top:6px">QMAX ${p.qmax}</span>`:''}
+    ${p.stockNote?`<div style="background:#F5F5F5;color:#555555;padding:6px 10px;border-radius:6px;font-size:12px;margin-top:8px">⚠️ ${p.stockNote}</div>`:''}
+    <div class="modal-sec"><h4>材質成分</h4><p>${p.material.replace(/\n/g,'<br>')}</p></div>
+    ${p.feature?`<div class="modal-sec"><h4>產品特色</h4><p>${p.feature.substring(0,200)}${p.feature.length>200?'…':''}</p></div>`:''}
+    ${p.certs.length?`<div class="modal-sec"><h4>認證</h4><div style="display:flex;gap:5px;flex-wrap:wrap">${p.certs.map(c=>`<span class="tag">${c}</span>`).join('')}</div></div>`:''}
+    <div class="modal-sec"><h4>選擇規格加入提品表</h4>${vhtml}</div>
+    <button class="modal-done" onclick="closeModal()">完成選擇</button>`;
+  document.getElementById('productModal').classList.add('open');
+}
+
+function toggleV(vid, pid) {
+  const p = PRODUCTS.find(x => x.id === pid);
+  const v = p.variants.find(x => x.id === vid);
+  if (selected[vid]) delete selected[vid]; else selected[vid] = { variant: v, product: p };
+  const vc = document.getElementById('vc-' + vid);
+  if (vc) { vc.classList.toggle('checked', !!selected[vid]); const cb = vc.querySelector('input'); if(cb) cb.checked = !!selected[vid]; }
+  renderProposal(); renderCatalog(); updateCount();
+}
+function quickAdd(pid) {
+  const p = PRODUCTS.find(x => x.id === pid);
+  if (p.variants.length === 1) {
+    const v = p.variants[0];
+    if (!selected[v.id]) { selected[v.id] = { variant:v, product:p }; renderProposal(); renderCatalog(); updateCount(); showToast(`已加入：${p.name}`); }
+  } else { openProduct(pid); }
+}
+function closeModal() { document.getElementById('productModal').classList.remove('open'); }
+
+// ─────────────────────────────────
+// PROPOSAL
+// ─────────────────────────────────
+function renderProposal() {
+  const list = document.getElementById('proposalList');
+  const items = Object.values(selected);
+  if (!items.length) {
+    list.innerHTML = `<div class="proposal-empty"><div class="icon">📋</div><div>尚未選擇產品</div><div style="font-size:12px">點左側產品卡片的 + 按鈕加入</div></div>`;
+    document.getElementById('proposalStats').style.display = 'none';
+    return;
+  }
+  const grouped = {};
+  items.forEach(({ variant, product }) => {
+    if (!grouped[product.id]) grouped[product.id] = { product, variants:[] };
+    grouped[product.id].variants.push(variant);
+  });
+  let html = '';
+  Object.values(grouped).forEach(({ product:p, variants }) => {
+    const vtags = variants.map(v => `<span class="vtag" onclick="toggleV('${v.id}','${p.id}');renderCatalog()" title="點擊移除">${v.size}${v.color!=='-'?' '+v.color:''} ✕</span>`).join('');
+    const ps = variants.filter(v=>v.priceSuggest);
+    const pp1 = variants.filter(v=>v.priceSupply1);
+    const pp2 = variants.filter(v=>v.priceSupply2);
+    const pp3 = variants.filter(v=>v.priceSupply3);
+    html += `
+      <div class="proposal-item">
+        <div class="pitem-header">
+          <div class="pitem-name">${nameHtml(p)}</div>
+          <button class="remove-btn" onclick="removeProduct('${p.id}')">✕</button>
+        </div>
+        <div class="pitem-meta"><span>📁 ${p.category}</span><span>🏷 ${p.brand}</span>${p.qmax?`<span>❄️ QMAX ${p.qmax}</span>`:''}</div>
+        <div class="pitem-variants">${vtags}</div>
+        ${ps.length?`<div class="pitem-prices">
+          <div><span class="price-label">建議</span><span style="font-size:13px;font-weight:700;color:var(--primary)">NT$${Math.min(...ps.map(v=>v.priceSuggest)).toLocaleString()}</span></div>
+          ${pp1.length?`<div><span class="price-label">T1</span><span style="font-size:13px;font-weight:600;color:var(--accent)">NT$${Math.min(...pp1.map(v=>v.priceSupply1)).toLocaleString()}</span></div>`:''}
+          ${pp2.length?`<div><span class="price-label">T2</span><span style="font-size:12px;color:var(--muted)">NT$${Math.min(...pp2.map(v=>v.priceSupply2)).toLocaleString()}</span></div>`:''}
+          ${pp3.length?`<div><span class="price-label">T3</span><span style="font-size:12px;color:var(--muted)">NT$${Math.min(...pp3.map(v=>v.priceSupply3)).toLocaleString()}</span></div>`:''}
+        </div>`:''}
+      </div>`;
+  });
+  list.innerHTML = html;
+  document.getElementById('statItems').textContent = Object.keys(grouped).length;
+  document.getElementById('statVariants').textContent = items.length;
+  document.getElementById('proposalStats').style.display = 'flex';
+}
+function removeProduct(pid) {
+  const p = PRODUCTS.find(x => x.id === pid);
+  p.variants.forEach(v => delete selected[v.id]);
+  renderProposal(); renderCatalog(); updateCount();
+}
+function updateCount() { document.getElementById('selectedCount').textContent = `已選 ${Object.keys(selected).length} 件`; }
+
+// ─────────────────────────────────
+// PREVIEW
+// ─────────────────────────────────
+function openPreview() {
+  const items = Object.values(selected);
+  if (!items.length) { showToast('請先選擇產品'); return; }
+  const title = document.getElementById('proposalTitle').value || '提品表';
+  document.getElementById('previewTitle').textContent = title;
+  const today = new Date().toLocaleDateString('zh-TW');
+  let rows = '';
+  items.forEach(({ variant:v, product:p }) => {
+    rows += `<tr>
+      <td><strong>${p.link?`<a href="${p.link}" target="_blank" style="color:var(--primary);text-decoration:none">${p.name} ↗</a>`:p.name}</strong><br><span style="color:var(--muted);font-size:10px">${p.brand}</span></td>
+      <td style="font-size:10px">${p.material.replace(/\n/g,'<br>')}</td>
+      <td style="font-size:10px">${(p.feature||'').substring(0,60)}${(p.feature||'').length>60?'…':''}</td>
+      <td style="font-size:10px">${p.certs.join('、')||'-'}</td>
+      <td>${v.size}</td><td>${v.dim}</td><td>${v.color}</td>
+      <td>${v.stock!==null?(v.stock===0?'<span style="color:#888">無</span>':v.stock):'確認中'}</td>
+      <td>${v.priceRetail?'NT$'+v.priceRetail.toLocaleString():'-'}</td>
+      <td><strong>${v.priceSuggest?'NT$'+v.priceSuggest.toLocaleString():'-'}</strong></td>
+      <td style="color:var(--accent);font-weight:600">${v.priceSupply1?'NT$'+v.priceSupply1.toLocaleString():'-'}</td>
+      <td style="color:var(--accent)">${v.priceSupply2?'NT$'+v.priceSupply2.toLocaleString():'-'}</td>
+      <td style="color:var(--accent)">${v.priceSupply3?'NT$'+v.priceSupply3.toLocaleString():'-'}</td>
+    </tr>`;
+  });
+  document.getElementById('previewBody').innerHTML = `
+    <div style="margin-bottom:16px"><h2 style="font-size:18px;color:var(--primary)">${title}</h2>
+    <p style="font-size:11px;color:var(--muted);margin-top:4px">產生日期：${today} ｜ 共 ${items.length} 個規格</p></div>
+    <table class="preview-table"><thead><tr><th>品名</th><th>材質成分</th><th>產品特色</th><th>認證</th><th>規格</th><th>尺寸</th><th>顏色</th><th>庫存</th><th>原定價</th><th>建議售價</th><th>供應價T1</th><th>供應價T2</th><th>供應價T3</th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById('previewModal').classList.add('open');
+}
+function closePreview() { document.getElementById('previewModal').classList.remove('open'); }
+
+// ─────────────────────────────────
+// EXCEL EXPORT
+// ─────────────────────────────────
+const EXPORT_TEMPLATES = {
+  '價格表-T1': {
+    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T1(NT$)'],
+    widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 14],
+    row: (v, p) => [
+      p.name, p.brand, p.category,
+      p.material.replace(/\n/g,'；'),
+      v.size, v.dim, v.color,
+      v.stock !== null ? v.stock : '確認中',
+      v.priceRetail || '', v.priceSuggest || '', v.priceSupply1 || ''
+    ]
+  },
+  '價格表-T2': {
+    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T2(NT$)'],
+    widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 14],
+    row: (v, p) => [
+      p.name, p.brand, p.category,
+      p.material.replace(/\n/g,'；'),
+      v.size, v.dim, v.color,
+      v.stock !== null ? v.stock : '確認中',
+      v.priceRetail || '', v.priceSuggest || '', v.priceSupply2 || ''
+    ]
+  },
+  '價格表-T3': {
+    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T3(NT$)'],
+    widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 14],
+    row: (v, p) => [
+      p.name, p.brand, p.category,
+      p.material.replace(/\n/g,'；'),
+      v.size, v.dim, v.color,
+      v.stock !== null ? v.stock : '確認中',
+      v.priceRetail || '', v.priceSuggest || '', v.priceSupply3 || ''
+    ]
+  }
+};
+
+function exportExcel(templateName) {
+  const items = Object.values(selected);
+  if (!items.length) { showToast('請先選擇產品'); return; }
+  const tmpl = EXPORT_TEMPLATES[templateName];
+  const title = document.getElementById('proposalTitle').value || templateName;
+  const today = new Date().toLocaleDateString('zh-TW').replace(/\//g,'');
+  const wsData = [tmpl.cols];
+  items.forEach(({ variant:v, product:p }) => wsData.push(tmpl.row(v, p)));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = tmpl.widths.map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 30));
+  XLSX.writeFile(wb, `${title}_${templateName}_${today}.xlsx`);
+  showToast(`✅ 已匯出${templateName}（${items.length} 筆）`);
+}
+
+// ─────────────────────────────────
+// EXPORT DROPDOWN
+// ─────────────────────────────────
+let _openExportDd = null;
+function toggleExportDd(id) {
+  const menu = document.getElementById(`exportDd-${id}`);
+  const isOpen = menu.classList.contains('open');
+  closeExportDd();
+  if (!isOpen) { menu.classList.add('open'); _openExportDd = id; }
+}
+function closeExportDd() {
+  if (_openExportDd) { document.getElementById(`exportDd-${_openExportDd}`)?.classList.remove('open'); _openExportDd = null; }
+}
+document.addEventListener('click', e => { if (!e.target.closest('.export-dd')) closeExportDd(); });
+
+// ─────────────────────────────────
+// TOAST
+// ─────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─────────────────────────────────
+// PPTX EXPORT
+// ─────────────────────────────────
+async function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// 嘗試將圖片 URL 轉為 base64（處理 CORS；失敗回傳 null）
+async function imgToBase64(url) {
+  if (!url) return null;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const timer = setTimeout(() => resolve(null), 8000);
+    img.onload = () => {
+      clearTimeout(timer);
+      try {
+        const maxW = 800, maxH = 600;
+        let w = img.naturalWidth || 400, h = img.naturalHeight || 300;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85).replace('data:', ''));
+      } catch(e) { resolve(null); }
+    };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
+    img.src = url;
+  });
+}
+
+// 版面：10" x 5.625"（LAYOUT_16x9）
+// 左欄（0~4.22"）：商品圖片 + 産地徽章 + 規格/尺寸/顏色/建議售價
+// 右欄（4.38~9.78"）：特色說明（全部）/ 材質 / 認證chips
+async function exportPPTX() {
+  const items = Object.values(selected);
+  if (!items.length) { showToast('請先選擇產品'); return; }
+
+  if (typeof PptxGenJS === 'undefined') {
+    showToast('⏳ 載入 PPTX 模組…');
+    try { await loadScript('https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundle.js'); }
+    catch(e) { showToast('❌ 無法載入 PPTX 模組，請確認網路'); return; }
+  }
+  showToast('⏳ 產生簡報中…');
+
+  const grouped = {};
+  items.forEach(({ variant, product }) => {
+    if (!grouped[product.id]) grouped[product.id] = { product, variants: [] };
+    grouped[product.id].variants.push(variant);
+  });
+
+  const pres = new PptxGenJS();
+  pres.layout = 'LAYOUT_16x9';
+  const title = document.getElementById('proposalTitle').value || '提品簡報';
+  pres.title = title;
+
+  // 色彩（不可用 # 前綴）— 黑白灰商務風
+  const CP = '1F1F1F', CA = '1F1F1F', CT = '1A1A1A', CM = '888888', CB = 'E0E0E0';
+  const IMG_X = 0.2, IMG_Y = 0.72, IMG_W = 3.8, IMG_H = 2.2; // 圖片縮短，留空間給規格
+  const DIV_X = 4.22;
+  const CX = 4.38, CW = 5.4; // 右欄 x, width
+
+  for (const { product: p, variants } of Object.values(grouped)) {
+    const slide = pres.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // ── 標題列 ──
+    slide.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:10, h:0.6, fill:{color:CP}, line:{color:CP} });
+    slide.addText(p.name, { x:0.25, y:0, w:7.5, h:0.6, fontSize:16, bold:true, color:'FFFFFF', valign:'middle', margin:0 });
+    slide.addText(p.category, { x:8.5, y:0, w:1.25, h:0.6, fontSize:10, color:'AAAAAA', valign:'middle', align:'right', margin:0 });
+
+    // ── 左欄：商品圖片 ──
+    const imgData = await imgToBase64(p.image);
+    if (imgData) {
+      slide.addImage({ data:imgData, x:IMG_X, y:IMG_Y, w:IMG_W, h:IMG_H, sizing:{type:'contain',w:IMG_W,h:IMG_H} });
+    } else {
+      slide.addShape(pres.shapes.RECTANGLE, { x:IMG_X, y:IMG_Y, w:IMG_W, h:IMG_H, fill:{color:'F5F5F5'}, line:{color:CB} });
+      slide.addText('無圖片', { x:IMG_X, y:IMG_Y+1.2, w:IMG_W, h:0.4, fontSize:12, color:CM, align:'center', valign:'middle', margin:0 });
+    }
+
+    // ── 左欄：産地徽章（緊接圖片下方）──
+    const originY = IMG_Y + IMG_H + 0.06; // 2.98
+    if (p.origin) {
+      slide.addShape(pres.shapes.RECTANGLE, { x:IMG_X, y:originY, w:IMG_W, h:0.26, fill:{color:'F0F0F0'}, line:{color:CB} });
+      slide.addText('産地  ' + p.origin, { x:IMG_X, y:originY, w:IMG_W, h:0.26, fontSize:10, bold:true, color:CP, valign:'middle', align:'center', margin:0 });
+    }
+
+    // ── 左欄：規格 / 尺寸 / 顏色 / 建議售價（左下角）──
+    {
+      const specLabelY = originY + (p.origin ? 0.26 : 0) + 0.1;
+      slide.addText('規格 / 尺寸 / 顏色 / 建議售價', { x:IMG_X, y:specLabelY, w:IMG_W, h:0.18, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
+      const sizeMap = {};
+      variants.forEach(v => {
+        const key = v.size + '||' + (v.dim || '');
+        if (!sizeMap[key]) sizeMap[key] = { size: v.size, dim: v.dim || '', colors: [], price: null };
+        if (v.color && v.color !== '-') sizeMap[key].colors.push(v.color);
+        if (!sizeMap[key].price && v.priceSuggest) sizeMap[key].price = v.priceSuggest;
+      });
+      const specGroups = Object.values(sizeMap);
+      const stripH = 0.3, stripGap = 0.04;
+      const specStartY = specLabelY + 0.22;
+      const maxGroups = Math.min(specGroups.length, Math.floor((5.1 - specStartY) / (stripH + stripGap)));
+      specGroups.slice(0, maxGroups).forEach((sg, i) => {
+        const sy = specStartY + i * (stripH + stripGap);
+        const bg = i % 2 === 0 ? 'FFFFFF' : 'F5F5F5';
+        slide.addShape(pres.shapes.RECTANGLE, { x:IMG_X, y:sy, w:IMG_W, h:stripH, fill:{color:bg}, line:{color:CB} });
+        const colorStr = sg.colors.length ? '  ' + sg.colors.join(' / ') : '';
+        const specText = [sg.size, sg.dim].filter(Boolean).join('  ·  ') + colorStr;
+        slide.addText(specText, { x:IMG_X+0.1, y:sy, w:IMG_W-1.4, h:stripH, fontSize:9, color:CT, valign:'middle', margin:0 });
+        if (sg.price) {
+          slide.addText('NT$' + sg.price.toLocaleString(), {
+            x:IMG_X+IMG_W-1.32, y:sy, w:1.22, h:stripH,
+            fontSize:9.5, bold:true, color:CP, valign:'middle', align:'right', margin:0
+          });
+        }
+      });
+    }
+
+    // ── 分隔線 ──
+    slide.addShape(pres.shapes.RECTANGLE, { x:DIV_X, y:0.7, w:0.02, h:4.35, fill:{color:CB}, line:{color:CB} });
+
+    // ── 右欄：固定錨點版面 ──
+    // 認證進頁腳灰底；材質成分固定在頁腳上方；特色說明佔滿所有剩餘空間
+    const MAT_LBL_Y   = 4.22;   // 材質成分標籤
+    const MAT_TEXT_Y  = 4.42;   // 材質成分內文
+    const FEAT_TEXT_Y = 0.94;   // 特色說明內文起點
+    const FEAT_MAX_H  = MAT_LBL_Y - FEAT_TEXT_Y - 0.06; // ~3.22"
+
+    if (p.feature) {
+      slide.addText('特色說明', { x:CX, y:0.72, w:CW, h:0.2, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
+      const featLines = p.feature.split('\n').map(l => l.trim()).filter(l => l);
+      const lc = featLines.length;
+      // 依行數動態縮小字型（最小 7pt），確保全部可見
+      const fs = lc <= 9 ? 10 : lc <= 13 ? 9 : lc <= 18 ? 8 : 7;
+      slide.addText(featLines.join('\n'), { x:CX, y:FEAT_TEXT_Y, w:CW, h:FEAT_MAX_H, fontSize:fs, color:CT, margin:0 });
+    }
+
+    // 材質成分（保留原始換行格式，固定在頁腳上方）
+    if (p.material) {
+      slide.addText('材質成分', { x:CX, y:MAT_LBL_Y, w:CW, h:0.18, fontSize:8, color:CM, bold:true, charSpacing:1, margin:0 });
+      slide.addText(p.material.trim(), { x:CX, y:MAT_TEXT_Y, w:CW, h:0.65, fontSize:9.5, color:CT, margin:0 });
+    }
+
+    // ── 頁腳（含認證）──
+    slide.addShape(pres.shapes.RECTANGLE, { x:0, y:5.175, w:10, h:0.45, fill:{color:'F0F0F0'}, line:{color:CB} });
+    // 左側：品牌 / 産地 / QMAX
+    const footParts = [p.brand];
+    if (p.origin) footParts.push(p.origin);
+    if (p.qmax) footParts.push('QMAX ' + p.qmax);
+    slide.addText(footParts.join('  |  '), { x:0.25, y:5.175, w:4.5, h:0.45, fontSize:9, color:CM, valign:'middle', margin:0 });
+    // 右側：認證（✓ 文字，最多 3 項）
+    if (p.certs.length) {
+      const certStr = p.certs.slice(0, 3).map(c => '✓ ' + c).join('   ');
+      slide.addText(certStr, { x:4.9, y:5.175, w:4.85, h:0.45, fontSize:9, color:CM, valign:'middle', align:'right', margin:0 });
+    }
+  }
+
+  const today = new Date().toLocaleDateString('zh-TW').replace(/\//g, '');
+  try {
+    await pres.writeFile({ fileName: title + '_提品簡報_' + today + '.pptx' });
+    showToast('✅ 已匯出簡報（' + Object.keys(grouped).length + ' 頁）');
+  } catch(e) {
+    showToast('❌ 匯出失敗：' + e.message);
+    console.error(e);
+  }
+}
+
+// ─────────────────────────────────
+// START
+// ─────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
