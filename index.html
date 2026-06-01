@@ -419,7 +419,15 @@ function loadSheetGVIZ(sheetName) {
       const cols = res.table.cols.length;
       const rows = res.table.rows.map(row => {
         const r = new Array(cols).fill('');
-        if (row && row.c) row.c.forEach((cell, i) => { if (cell && cell.v != null) r[i] = cell.v.toString(); });
+        if (row && row.c) row.c.forEach((cell, i) => {
+          if (!cell) return;
+          // 優先使用超連結 URL（格式化超連結的實際網址在 cell.p.href）
+          if (cell.p && cell.p.href && typeof cell.p.href === 'string' && cell.p.href.startsWith('http')) {
+            r[i] = cell.p.href;
+          } else if (cell.v != null) {
+            r[i] = cell.v.toString();
+          }
+        });
         return r;
       });
       resolve(rows);
@@ -982,7 +990,7 @@ function closePreview() { document.getElementById('previewModal').classList.remo
 // ─────────────────────────────────
 const EXPORT_TEMPLATES = {
   '價格表-T1': {
-    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T1(NT$)','Odoo連結'],
+    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T1(NT$)','官網連結'],
     widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 14, 40],
     row: (v, p) => [
       p.name, p.brand, p.category,
@@ -993,7 +1001,7 @@ const EXPORT_TEMPLATES = {
     ]
   },
   '價格表-T2': {
-    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T2(NT$)','Odoo連結'],
+    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T2(NT$)','官網連結'],
     widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 14, 40],
     row: (v, p) => [
       p.name, p.brand, p.category,
@@ -1004,7 +1012,7 @@ const EXPORT_TEMPLATES = {
     ]
   },
   '價格表-T3': {
-    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T3(NT$)','Odoo連結'],
+    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','原定價(NT$)','建議售價(NT$)','供應價T3(NT$)','官網連結'],
     widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 14, 40],
     row: (v, p) => [
       p.name, p.brand, p.category,
@@ -1027,6 +1035,17 @@ function exportExcel(templateName) {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols'] = tmpl.widths.map(w => ({ wch: w }));
+  // 將官網連結欄設為可點擊超連結
+  const linkColIdx = tmpl.cols.indexOf('官網連結');
+  if (linkColIdx >= 0) {
+    wsData.slice(1).forEach((rowData, i) => {
+      const url = rowData[linkColIdx];
+      if (url && typeof url === 'string' && url.startsWith('http')) {
+        const cellAddr = XLSX.utils.encode_cell({ r: i + 1, c: linkColIdx });
+        if (ws[cellAddr]) ws[cellAddr].l = { Target: url };
+      }
+    });
+  }
   XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 30));
   XLSX.writeFile(wb, `${title}_${templateName}_${today}.xlsx`);
   showToast(`✅ 已匯出${templateName}（${items.length} 筆）`);
