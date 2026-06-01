@@ -856,7 +856,7 @@ function openProduct(pid) {
     vhtml += `
       <div class="variant-card${selected[v.id]?' checked':''}" id="vc-${v.id}" onclick="toggleV('${v.id}','${pid}')">
         <label>
-          <input type="checkbox" ${chk} onclick="toggleV('${v.id}','${pid}');event.stopPropagation()" style="flex-shrink:0;margin-top:1px">
+          <input type="checkbox" ${chk} onclick="event.stopPropagation()" style="flex-shrink:0;margin-top:1px">
           <div>
             <div class="vn">${v.size}${v.color!=='-'?' · '+v.color:''}</div>
             <div class="vm">${v.dim}</div>
@@ -890,7 +890,7 @@ function toggleV(vid, pid) {
   if (selected[vid]) delete selected[vid]; else selected[vid] = { variant: v, product: p };
   const vc = document.getElementById('vc-' + vid);
   if (vc) { vc.classList.toggle('checked', !!selected[vid]); const cb = vc.querySelector('input'); if(cb) cb.checked = !!selected[vid]; }
-  renderProposal(); renderCatalog(); updateCount();
+  renderProposal(); updateCount();
 }
 function quickAdd(pid) {
   const p = PRODUCTS.find(x => x.id === pid);
@@ -899,7 +899,7 @@ function quickAdd(pid) {
     if (!selected[v.id]) { selected[v.id] = { variant:v, product:p }; renderProposal(); renderCatalog(); updateCount(); showToast(`已加入：${p.name}`); }
   } else { openProduct(pid); }
 }
-function closeModal() { document.getElementById('productModal').classList.remove('open'); }
+function closeModal() { document.getElementById('productModal').classList.remove('open'); renderCatalog(); }
 
 // ─────────────────────────────────
 // PROPOSAL
