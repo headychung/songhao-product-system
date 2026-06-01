@@ -495,9 +495,9 @@ const stripBrand = s => s.replace(/^\[[^\]]+\]\s*/,'').trim(); // 移除開頭�
 
 // ─────────────────────────────────
 // PARSE（通用解析器，適用所有分頁）
-// 0照片 1品名 2材質 3特色 4認證 5產地 6規格 7尺寸 8顏色 9庫存 10原定價 11建議售價
-// 12供應價T1 13供應價T2 14供應價T3 15連結
-// （A欄編號已刪除，所有索引較原始設計 -1）
+// 0照片 1品名 2Odoo連結(C) 3材質 4特色 5認證 6產地 7規格 8尺寸 9顏色 10庫存 11原定價 12建議售價
+// 13供應價T1 14供應價T2 15供應價T3
+// （A欄編號已刪除；C欄新增Odoo連結，其後各欄索引較舊版 +1）
 // 新品觸發：B欄(1)有品名即為新產品
 // 價格／規格 carry-forward：每次出現即更新，顏色續列自動沿用
 // ─────────────────────────────────
@@ -527,17 +527,17 @@ function parseSheet(rows, category) {
     if (品名 === '品名' || 品名 === '商品名稱') continue;
 
     if (品名) {
-      const feat = g(row, 3), mat = g(row, 2), 庫存raw = g(row, 9);
+      const feat = g(row, 4), mat = g(row, 3), 庫存raw = g(row, 10);
       cur = {
         id: `${CAT_PREFIX[category]||category[0]}${idx++}`, category,
         image: toDriveImgUrl(g(row, 0)),
         brand: extractBrand(cleanName(品名)),
         name: stripBrand(cleanName(品名)),
         material: mat, feature: feat,
-        origin: isValidOrigin(g(row, 5)) ? g(row, 5) : null,
-        certs: parseCerts(g(row, 4)),
+        origin: isValidOrigin(g(row, 6)) ? g(row, 6) : null,
+        certs: parseCerts(g(row, 5)),
         qmax: extractQmax(feat) || extractQmax(mat),
-        link: g(row, 15) || null,
+        link: g(row, 2) || null,
         stockNote: !isNumStr(庫存raw) && 庫存raw ? 庫存raw : null,
         variants: []
       };
@@ -549,17 +549,17 @@ function parseSheet(rows, category) {
 
     if (!cur) continue;
 
-    const 規格 = g(row, 6), 顏色 = g(row, 8), 庫存raw = g(row, 9);
-    const link = g(row, 15);
+    const 規格 = g(row, 7), 顏色 = g(row, 9), 庫存raw = g(row, 10);
+    const link = g(row, 2);
     if (link && !cur.link) cur.link = link;
-    if (規格) { curSize = 規格; curDim = g(row, 7) || curDim; }
+    if (規格) { curSize = 規格; curDim = g(row, 8) || curDim; }
 
     // 產地 carry-forward（取最早出現的合法值）
-    if (!cur.origin) { const o = g(row, 5); if (isValidOrigin(o)) cur.origin = o; }
+    if (!cur.origin) { const o = g(row, 6); if (isValidOrigin(o)) cur.origin = o; }
 
     // 價格 carry-forward：出現非空值即更新
-    const r = parsePrice(g(row, 10)), s = parsePrice(g(row, 11));
-    const p1 = parsePrice(g(row, 12)), p2 = parsePrice(g(row, 13)), p3 = parsePrice(g(row, 14));
+    const r = parsePrice(g(row, 11)), s = parsePrice(g(row, 12));
+    const p1 = parsePrice(g(row, 13)), p2 = parsePrice(g(row, 14)), p3 = parsePrice(g(row, 15));
     if (r != null) curRetail = r;
     if (s != null) curSuggest = s;
     if (p1 != null) curSupply1 = p1;
