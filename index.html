@@ -854,18 +854,16 @@ function openProduct(pid) {
     const stkCol = v.stock === null ? '#AAAAAA' : v.stock === 0 ? '#888888' : '#444444';
     vhtml += `
       <div class="variant-card${selected[v.id]?' checked':''}" id="vc-${v.id}" onclick="toggleV('${v.id}','${pid}')">
-        <label>
-          <input type="checkbox" ${chk} onclick="event.stopPropagation()" style="flex-shrink:0;margin-top:1px">
-          <div>
-            <div class="vn">${v.size}${v.color!=='-'?' · '+v.color:''}</div>
-            <div class="vm">${v.dim}</div>
-            ${v.priceSuggest?`<div class="vm" style="color:var(--primary);font-weight:700">售 NT$${v.priceSuggest.toLocaleString()}</div>`:''}
-            ${v.priceSupply1?`<div class="vm" style="color:#444">T1 NT$${v.priceSupply1.toLocaleString()}</div>`:''}
-            ${v.priceSupply2?`<div class="vm" style="color:#666">T2 NT$${v.priceSupply2.toLocaleString()}</div>`:''}
-            ${v.priceSupply3?`<div class="vm" style="color:#888">T3 NT$${v.priceSupply3.toLocaleString()}</div>`:''}
-            <div class="vm" style="color:${stkCol}">${stk}</div>
-          </div>
-        </label>
+        <input type="checkbox" ${chk} style="pointer-events:none;flex-shrink:0;margin-top:2px">
+        <div>
+          <div class="vn">${v.size}${v.color!=='-'?' · '+v.color:''}</div>
+          <div class="vm">${v.dim}</div>
+          ${v.priceSuggest?`<div class="vm" style="color:var(--primary);font-weight:700">售 NT$${v.priceSuggest.toLocaleString()}</div>`:''}
+          ${v.priceSupply1?`<div class="vm" style="color:#444">T1 NT$${v.priceSupply1.toLocaleString()}</div>`:''}
+          ${v.priceSupply2?`<div class="vm" style="color:#666">T2 NT$${v.priceSupply2.toLocaleString()}</div>`:''}
+          ${v.priceSupply3?`<div class="vm" style="color:#888">T3 NT$${v.priceSupply3.toLocaleString()}</div>`:''}
+          <div class="vm" style="color:${stkCol}">${stk}</div>
+        </div>
       </div>`;
   });
   vhtml += '</div>';
@@ -878,11 +876,30 @@ function openProduct(pid) {
     <div class="modal-sec"><h4>材質成分</h4><p>${p.material.replace(/\n/g,'<br>')}</p></div>
     ${p.feature?`<div class="modal-sec"><h4>產品特色</h4><p style="white-space:pre-wrap">${p.feature.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p></div>`:''}
     ${p.certs.length?`<div class="modal-sec"><h4>認證</h4><div style="display:flex;gap:5px;flex-wrap:wrap">${p.certs.map(c=>`<span class="tag">${c}</span>`).join('')}</div></div>`:''}
-    <div class="modal-sec"><h4>選擇規格加入提品表</h4>${vhtml}</div>
+    <div class="modal-sec">
+      <h4 style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        選擇規格加入提品表
+        <button id="selAllBtn-${p.id}" onclick="selectAllV('${p.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-weight:600;color:var(--primary)">${p.variants.every(v=>selected[v.id])?'取消全選':'全選規格'}</button>
+      </h4>
+      ${vhtml}
+    </div>
     <button class="modal-done" onclick="closeModal()">完成選擇</button>`;
   document.getElementById('productModal').classList.add('open');
 }
 
+function selectAllV(pid) {
+  const p = PRODUCTS.find(x => x.id === pid);
+  const allSelected = p.variants.every(v => selected[v.id]);
+  p.variants.forEach(v => {
+    if (allSelected) delete selected[v.id];
+    else selected[v.id] = { variant: v, product: p };
+    const vc = document.getElementById('vc-' + v.id);
+    if (vc) { vc.classList.toggle('checked', !allSelected); const cb = vc.querySelector('input'); if(cb) cb.checked = !allSelected; }
+  });
+  const btn = document.getElementById('selAllBtn-' + pid);
+  if (btn) btn.textContent = allSelected ? '全選規格' : '取消全選';
+  renderProposal(); updateCount();
+}
 function toggleV(vid, pid) {
   const p = PRODUCTS.find(x => x.id === pid);
   const v = p.variants.find(x => x.id === vid);
@@ -893,10 +910,10 @@ function toggleV(vid, pid) {
 }
 function quickAdd(pid) {
   const p = PRODUCTS.find(x => x.id === pid);
-  if (p.variants.length === 1) {
-    const v = p.variants[0];
-    if (!selected[v.id]) { selected[v.id] = { variant:v, product:p }; renderProposal(); renderCatalog(); updateCount(); showToast(`已加入：${p.name}`); }
-  } else { openProduct(pid); }
+  let added = 0;
+  p.variants.forEach(v => { if (!selected[v.id]) { selected[v.id] = { variant:v, product:p }; added++; } });
+  if (added > 0) { renderProposal(); renderCatalog(); updateCount(); showToast(`已加入：${p.name}（${added} 個規格）`); }
+  else { showToast(`${p.name} 已全部加入`); }
 }
 function closeModal() { document.getElementById('productModal').classList.remove('open'); renderCatalog(); }
 
