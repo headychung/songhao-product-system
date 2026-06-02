@@ -1004,33 +1004,30 @@ function closePreview() { document.getElementById('previewModal').classList.remo
 // ─────────────────────────────────
 const EXPORT_TEMPLATES = {
   '價格表-T1': {
-    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','建議售價(NT$)','供應價T1(NT$)','官網連結'],
-    widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 40],
+    cols: ['品名','品類','規格','尺寸','顏色','庫存','建議售價(NT$)','供應價T1(NT$)','官網連結'],
+    widths: [30, 10, 10, 14, 10, 10, 14, 14, 40],
     row: (v, p) => [
-      p.name, p.brand, p.category,
-      p.material.replace(/\n/g,'；'),
+      p.name, p.category,
       v.size, v.dim, v.color,
       v.stock !== null ? v.stock : '確認中',
       v.priceSuggest || '', v.priceSupply1 || '', p.link || ''
     ]
   },
   '價格表-T2': {
-    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','建議售價(NT$)','供應價T2(NT$)','官網連結'],
-    widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 40],
+    cols: ['品名','品類','規格','尺寸','顏色','庫存','建議售價(NT$)','供應價T2(NT$)','官網連結'],
+    widths: [30, 10, 10, 14, 10, 10, 14, 14, 40],
     row: (v, p) => [
-      p.name, p.brand, p.category,
-      p.material.replace(/\n/g,'；'),
+      p.name, p.category,
       v.size, v.dim, v.color,
       v.stock !== null ? v.stock : '確認中',
       v.priceSuggest || '', v.priceSupply2 || '', p.link || ''
     ]
   },
   '價格表-T3': {
-    cols: ['品名','品牌','品類','材質成分','規格','尺寸','顏色','庫存','建議售價(NT$)','供應價T3(NT$)','官網連結'],
-    widths: [30, 12, 10, 35, 10, 14, 10, 10, 14, 14, 40],
+    cols: ['品名','品類','規格','尺寸','顏色','庫存','建議售價(NT$)','供應價T3(NT$)','官網連結'],
+    widths: [30, 10, 10, 14, 10, 10, 14, 14, 40],
     row: (v, p) => [
-      p.name, p.brand, p.category,
-      p.material.replace(/\n/g,'；'),
+      p.name, p.category,
       v.size, v.dim, v.color,
       v.stock !== null ? v.stock : '確認中',
       v.priceSuggest || '', v.priceSupply3 || '', p.link || ''
