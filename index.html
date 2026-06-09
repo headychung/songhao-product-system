@@ -263,6 +263,7 @@ body { font-family: 'Helvetica Neue', Arial, 'PingFang TC', '微軟正黑體', s
         <button class="tab-btn" onclick="setTab('床墊',this)">床墊</button>
         <button class="tab-btn" onclick="setTab('枕頭套',this)">枕頭套</button>
         <button class="tab-btn" onclick="setTab('抱枕',this)">抱枕</button>
+        <button class="tab-btn" onclick="setTab('nubizio',this)">nubizio</button>
       </div>
     </div>
     <!-- FILTER DROPDOWNS -->
@@ -500,7 +501,7 @@ const stripBrand = s => s.replace(/^\[[^\]]+\]\s*/,'').trim(); // 移除開頭�
 // 新品觸發：B欄(1)有品名即為新產品
 // 價格／規格 carry-forward：每次出現即更新，顏色續列自動沿用
 // ─────────────────────────────────
-const CAT_PREFIX = { '涼感被':'l', '夏季薄被':'s', '四季被':'q', '冬被':'d', 'OEM':'o', '床墊':'m', '枕頭套':'p', '抱枕':'a' };
+const CAT_PREFIX = { '涼感被':'l', '夏季薄被':'s', '四季被':'q', '冬被':'d', 'OEM':'o', '床墊':'m', '枕頭套':'p', '抱枕':'a', 'nubizio':'n' };
 
 function parseSheet(rows, category) {
   const products = [];
@@ -609,6 +610,8 @@ async function loadData() {
     const rows7 = await loadSheetGVIZ('枕頭套');
     document.querySelector('#loadingScreen div:last-child').textContent = '讀取抱枕…';
     const rows8 = await loadSheetGVIZ('抱枕');
+    document.querySelector('#loadingScreen div:last-child').textContent = '讀取nubizio…';
+    const rows9 = await loadSheetGVIZ('nubizio');
     PRODUCTS = [
       ...parseSheet(rows1, '涼感被'),
       ...parseSheet(rows2, '夏季薄被'),
@@ -618,6 +621,7 @@ async function loadData() {
       ...parseSheet(rows6, '床墊'),
       ...parseSheet(rows7, '枕頭套'),
       ...parseSheet(rows8, '抱枕'),
+      ...parseSheet(rows9, 'nubizio'),
     ];
 
     const now = new Date();
@@ -798,7 +802,7 @@ function nameHtml(p) {
 
 function renderCatalog() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  const cats = currentTab === 'all' ? ['涼感被','夏季薄被','四季被','冬被','OEM','床墊','枕頭套','抱枕'] : [currentTab];
+  const cats = currentTab === 'all' ? ['涼感被','夏季薄被','四季被','冬被','OEM','床墊','枕頭套','抱枕','nubizio'] : [currentTab];
   let html = '';
   cats.forEach(cat => {
     let prods = PRODUCTS.filter(p => p.category === cat);
