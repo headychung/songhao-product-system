@@ -1138,7 +1138,7 @@ async function imgToBase64(url) {
   // 2. 多 proxy 依序嘗試（weserv.nl 對 Odoo/各圖片來源最穩定）
   const proxies = [
     'https://images.weserv.nl/?url=',
-    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://imagecdn.app/v2/image/',
     'https://corsproxy.io/?',
   ];
   for (const px of proxies) {
