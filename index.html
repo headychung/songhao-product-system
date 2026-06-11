@@ -1135,11 +1135,11 @@ async function imgToBase64(url) {
   if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) {
     blob = await fetchBlob(url);
   }
-  // 2. 多 proxy 依序嘗試
+  // 2. 多 proxy 依序嘗試（weserv.nl 對 Odoo/各圖片來源最穩定）
   const proxies = [
+    'https://images.weserv.nl/?url=',
     'https://api.codetabs.com/v1/proxy?quest=',
     'https://corsproxy.io/?',
-    'https://api.allorigins.win/raw?url=',
   ];
   for (const px of proxies) {
     if (blob) break;
