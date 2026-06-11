@@ -1135,9 +1135,15 @@ async function imgToBase64(url) {
   if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) {
     blob = await fetchBlob(url);
   }
-  // 2. CORS proxy
-  if (!blob) {
-    blob = await fetchBlob('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url));
+  // 2. 多 proxy 依序嘗試
+  const proxies = [
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://corsproxy.io/?',
+    'https://api.allorigins.win/raw?url=',
+  ];
+  for (const px of proxies) {
+    if (blob) break;
+    blob = await fetchBlob(px + encodeURIComponent(url));
   }
   if (!blob) return null;
 
